@@ -14,14 +14,13 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "4000")
 DB_NAME = os.getenv("DB_NAME", "nutrifit")
 
-# --- CHANGEMENT 1: Utiliser le driver pymysql ---
+# -Utiliser le driver pymysql ---
 DATABASE_URL = (
     f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@"
     f"{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-# --- CHANGEMENT 2: Configuration SSL simplifiée ---
-# PyMySQL gère très bien le SSL par défaut.
+# --- Configuration SSL simplifiée ---
 connect_args = {
     "ssl_disabled": False,
     "ssl_verify_cert": True
