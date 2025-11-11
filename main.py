@@ -6,13 +6,14 @@ from typing import List
 
 # Importe vos modules de base
 from database import Base, engine, SessionLocal
-from models import Utilisateur, Recette # Importe Recette
+from models import Utilisateur, Recette, Seance, Exercice
 import schemas # Importe le nouveau fichier schemas
 import auth # Importe le nouveau fichier d'auth
 
 # Importe les contrôleurs
 from controllers.user_controller import signup_user, login_user, verify_code
-from controllers import recette_controller as rc # Renomme pour clarté
+from controllers import recette_controller as rc 
+from controllers import seance_controller as sc
 
 # Création de la base (votre code existant)
 Base.metadata.create_all(bind=engine)
@@ -138,3 +139,71 @@ def delete_existing_recette(
     if not rc.delete_recette(db, recette_id):
         raise HTTPException(status_code=404, detail="Recette non trouvée")
     return {"message": "Recette supprimée avec succès"}
+
+@app.get("/seances", response_model=List[schemas.Seance])
+def get_seances(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(auth.get_db), # Utilise get_db de auth.py
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Endpoint pour voir toutes les séances et leurs exercices.
+    (Nécessite d'être connecté)
+    """
+    seances = sc.get_all_seances(db, skip=skip, limit=limit)
+    return seances
+
+@app.get("/seances/{seance_id}", response_model=schemas.Seance)
+def get_seance(
+    seance_id: int,
+    db: Session = Depends(auth.get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Endpoint pour voir UNE séance et ses exercices.
+    (Nécessite d'être connecté)
+    """
+    db_seance = sc.get_seance_by_id(db, seance_id)
+    if db_seance is None:
+        raise HTTPException(status_code=404, detail="Séance non trouvée")
+    return db_seance
+
+@app.post("/seances", response_model=schemas.Seance, status_code=status.HTTP_201_CREATED)
+def create_new_seance(
+    seance: schemas.SeanceCreate,
+    db: Session = Depends(auth.get_db),
+    current_admin: Utilisateur = Depends(auth.get_current_admin_user)
+):
+    """
+    [ADMIN SEULEMENT] Créer une nouvelle séance (et ses exercices).
+    """
+    return sc.create_seance(db=db, seance=seance)
+
+@app.put("/seances/{seance_id}", response_model=schemas.Seance)
+def update_existing_seance(
+    seance_id: int,
+    seance: schemas.SeanceCreate,
+    db: Session = Depends(auth.get_db),
+    current_admin: Utilisateur = Depends(auth.get_current_admin_user)
+):
+    """
+    [ADMIN SEULEMENT] Mettre à jour une séance (et ses exercices).
+    """
+    db_seance = sc.update_seance(db, seance_id, seance)
+    if db_seance is None:
+        raise HTTPException(status_code=404, detail="Séance non trouvée")
+    return db_seance
+
+@app.delete("/seances/{seance_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_existing_seance(
+    seance_id: int,
+    db: Session = Depends(auth.get_db),
+    current_admin: Utilisateur = Depends(auth.get_current_admin_user)
+):
+    """
+    [ADMIN SEULEMENT] Supprimer une séance (et ses exercices).
+    """
+    if not sc.delete_seance(db, seance_id):
+        raise HTTPException(status_code=404, detail="Séance non trouvée")
+    return {"message": "Séance supprimée avec succès"}
