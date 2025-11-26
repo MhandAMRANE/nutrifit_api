@@ -14,6 +14,12 @@ class Utilisateur(Base):
     token_verification = Column(String(255))
     token_expiration = Column(DateTime)
     type_utilisateur = Column(String(50), default='client')
+    poids = Column(Float, nullable=True)
+    taille = Column(Integer, nullable=True)
+    age = Column(Integer, nullable=True)
+    sexe = Column(String(20), nullable=True)
+    objectif = Column(String(50), nullable=True)
+    niveau_activite = Column(String(50), nullable=True)
 
 class Recette(Base):
     __tablename__ = "Recette"

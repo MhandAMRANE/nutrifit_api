@@ -14,6 +14,7 @@ import auth # Importe le nouveau fichier d'auth
 from controllers.user_controller import signup_user, login_user, verify_code
 from controllers import recette_controller as rc # Renomme pour clarté
 from controllers import exercice_controller as ec
+from controllers import chat_controller as cc
 
 # Création de la base (votre code existant)
 Base.metadata.create_all(bind=engine)
@@ -44,6 +45,12 @@ class LoginModel(BaseModel):
 class VerifyCodeModel(BaseModel):
     email: EmailStr
     code: str
+
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    response: str
 
 # --- Endpoints Utilisateur (Votre code existant) ---
 
@@ -194,3 +201,17 @@ def delete_exercice(
     if not ec.delete_exercice(db, exercice_id):
         raise HTTPException(404, "Exercice non trouvé")
     return {"message": "Exercice supprimé"}
+
+@app.post("/chat", response_model=ChatResponse)
+def chat_with_coach(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Discuter avec le coach IA (nécessite d'être connecté)"""
+    ai_response = chat_controller.handle_chat_interaction(
+        user_message=request.message,
+        db=db,
+        current_user=current_user
+    )
+    return {"response": ai_response}
