@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import certifi
+from urllib.parse import quote_plus  # <--- Indispensable pour la sécurité
 
-# 1. Charger les variables d'environnement depuis le fichier .env
+# 1. Charger les variables
 load_dotenv()
 
 DB_USER = os.getenv("DB_USER")
@@ -14,12 +15,14 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 
-# 2. Construire l'URL de connexion
-DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# 2. Encoder le mot de passe (Sécurité)
+# Si le mot de passe contient des caractères spéciaux, cela évite le crash
+encoded_password = quote_plus(DB_PASSWORD)
 
-# 3. Configuration SSL pour TiDB Cloud
-# TiDB exige une connexion sécurisée. Sur Linux (ton environnement), 
-# les certificats sont généralement ici.
+# 3. Construire l'URL
+DATABASE_URL = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# 4. Configuration SSL pour TiDB Cloud
 ssl_args = {
     "ssl": {
         "ca": certifi.where()
@@ -29,7 +32,7 @@ ssl_args = {
 try:
     engine = create_engine(
         DATABASE_URL,
-        connect_args=ssl_args,  # On passe les arguments SSL ici
+        connect_args=ssl_args,
         echo=False,
         pool_pre_ping=True
     )
@@ -40,7 +43,6 @@ try:
 except Exception as e:
     print("❌ ERREUR : Impossible de se connecter à TiDB.")
     print(f"Détail : {e}")
-    # Si le chemin SSL échoue, essaie de commenter la ligne 'connect_args' pour tester
     exit(1)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

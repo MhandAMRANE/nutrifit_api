@@ -209,7 +209,7 @@ def chat_with_coach(
     current_user: Utilisateur = Depends(auth.get_current_user)
 ):
     """Discuter avec le coach IA (nécessite d'être connecté)"""
-    ai_response = chat_controller.handle_chat_interaction(
+    ai_response = cc.handle_chat_interaction(
         user_message=request.message,
         db=db,
         current_user=current_user

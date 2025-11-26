@@ -19,7 +19,7 @@ class Utilisateur(Base):
     age = Column(Integer, nullable=True)
     sexe = Column(String(20), nullable=True)
     objectif = Column(String(50), nullable=True)
-    niveau_activite = Column(String(50), nullable=True)
+    #niveau_activite = Column(String(50), nullable=True)
 
 class Recette(Base):
     __tablename__ = "Recette"

@@ -40,3 +40,18 @@ class Exercice(ExerciceBase):
     id_exercice: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserProfile(BaseModel):
+    id_utilisateur: int
+    nom: str
+    prenom: str
+    # Données physiques (Sans niveau_activite)
+    poids: Optional[float] = None
+    taille: Optional[int] = None
+    age: Optional[int] = None
+    sexe: Optional[str] = None
+    objectif: Optional[str] = None
+    # niveau_activite supprimé ici aussi
+
+    model_config = ConfigDict(from_attributes=True)
