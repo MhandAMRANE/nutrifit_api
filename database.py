@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+import certifi
 
 # 1. Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -21,7 +22,7 @@ DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB
 # les certificats sont généralement ici.
 ssl_args = {
     "ssl": {
-        "ca": "/etc/ssl/certs/ca-certificates.crt"
+        "ca": certifi.where()
     }
 }
 
