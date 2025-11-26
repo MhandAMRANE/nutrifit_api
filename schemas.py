@@ -21,3 +21,22 @@ class Recette(RecetteBase):
     
     # Permet à Pydantic de lire depuis un objet SQLAlchemy
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Schémas Exercices ---
+class ExerciceBase(BaseModel):
+    nom_exercice: str
+    description_exercice: str | None = None
+    type_exercice: str | None = None
+    nombre_series: int | None = None
+    calories_brulees: float | None = None
+    temps_recuperation: int | None = None
+    id_seance: int | None = None
+
+class ExerciceCreate(ExerciceBase):
+    pass
+
+class Exercice(ExerciceBase):
+    id_exercice: int
+
+    model_config = ConfigDict(from_attributes=True)

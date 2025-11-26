@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float
 from datetime import datetime
 from database import Base
 
@@ -23,3 +23,15 @@ class Recette(Base):
     description = Column(Text, nullable=True)
     ingredients = Column(Text, nullable=False) 
     nombre_calories = Column(Integer, nullable=True, default=0)
+
+class Exercice(Base):
+    __tablename__ = "Exercice"
+
+    id_exercice = Column(Integer, primary_key=True, index=True)
+    nom_exercice = Column(String(100), nullable=False)
+    description_exercice = Column(Text, nullable=True)
+    type_exercice = Column(String(50), nullable=True)
+    nombre_series = Column(Integer, nullable=True)
+    calories_brulees = Column(Float, nullable=True)
+    temps_recuperation = Column(Integer, nullable=True)
+    id_seance = Column(Integer)

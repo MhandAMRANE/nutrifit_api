@@ -13,6 +13,7 @@ import auth # Importe le nouveau fichier d'auth
 # Importe les contrôleurs
 from controllers.user_controller import signup_user, login_user, verify_code
 from controllers import recette_controller as rc # Renomme pour clarté
+from controllers import exercice_controller as ec
 
 # Création de la base (votre code existant)
 Base.metadata.create_all(bind=engine)
@@ -138,3 +139,58 @@ def delete_existing_recette(
     if not rc.delete_recette(db, recette_id):
         raise HTTPException(status_code=404, detail="Recette non trouvée")
     return {"message": "Recette supprimée avec succès"}
+
+
+@app.get("/exercices", response_model=List[schemas.Exercice])
+def get_exercices(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    return ec.get_all_exercices(db, skip, limit)
+
+
+@app.get("/exercices/{exercice_id}", response_model=schemas.Exercice)
+def get_exercice(
+    exercice_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    ex = ec.get_exercice_by_id(db, exercice_id)
+    if not ex:
+        raise HTTPException(404, "Exercice non trouvé")
+    return ex
+
+
+@app.post("/exercices", response_model=schemas.Exercice)
+def create_exercice(
+    exercice: schemas.ExerciceCreate,
+    db: Session = Depends(get_db),
+    current_admin: Utilisateur = Depends(auth.get_current_admin_user)
+):
+    return ec.create_exercice(db, exercice)
+
+
+@app.put("/exercices/{exercice_id}", response_model=schemas.Exercice)
+def update_exercice(
+    exercice_id: int,
+    exercice: schemas.ExerciceCreate,
+    db: Session = Depends(get_db),
+    current_admin: Utilisateur = Depends(auth.get_current_admin_user)
+):
+    updated = ec.update_exercice(db, exercice_id, exercice)
+    if not updated:
+        raise HTTPException(404, "Exercice non trouvé")
+    return updated
+
+
+@app.delete("/exercices/{exercice_id}")
+def delete_exercice(
+    exercice_id: int,
+    db: Session = Depends(get_db),
+    current_admin: Utilisateur = Depends(auth.get_current_admin_user)
+):
+    if not ec.delete_exercice(db, exercice_id):
+        raise HTTPException(404, "Exercice non trouvé")
+    return {"message": "Exercice supprimé"}

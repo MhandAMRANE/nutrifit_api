@@ -1,49 +1,36 @@
-# nutrifit_api/database.py (Version finale avec PyMySQL)
+# nutrifit_api/database.py
 
-import os
-import pymysql  # Nécessaire pour que SQLAlchemy trouve le driver
+import pymysql
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
 
-load_dotenv()
+# ⚠️ CONFIG MYSQL — adapte si besoin
+DB_USER = "root"            # ou ton user MySQL
+DB_PASSWORD = ""            # si vide, mets ""
+DB_HOST = "127.0.0.1"       # MySQL en local
+DB_PORT = "3306"            # port MySQL standard
+DB_NAME = "nutrifit"        # nom de ta base
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", "4000")
-DB_NAME = os.getenv("DB_NAME", "nutrifit")
-
-# --- CHANGEMENT 1: Utiliser le driver pymysql ---
 DATABASE_URL = (
     f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@"
     f"{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-# --- CHANGEMENT 2: Configuration SSL simplifiée ---
-# PyMySQL gère très bien le SSL par défaut.
-connect_args = {
-    "ssl_disabled": False,
-    "ssl_verify_cert": True
-}
-
 try:
     engine = create_engine(
         DATABASE_URL,
-        connect_args=connect_args
+        echo=False,
+        pool_pre_ping=True
     )
-    
-    with engine.connect() as connection:
-        print(f"✅ (PyMySQL) Connexion à TiDB ({DB_HOST}) réussie !")
 
-except ImportError:
-    print("Erreur : Le driver 'PyMySQL' n'est pas installé.")
-    print("Veuillez l'installer avec : pip install PyMySQL")
-    exit(1)
+    with engine.connect() as connection:
+        print("Connexion MySQL réussie !")
+
 except Exception as e:
-    print(f"❌ (PyMySQL) ERREUR : Impossible de se connecter.")
+    print(" ERREUR : Impossible de se connecter à MySQL.")
     print(f"Détail : {e}")
     exit(1)
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
