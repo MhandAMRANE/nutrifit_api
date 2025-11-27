@@ -5,9 +5,14 @@ from models import Utilisateur
 from controllers import recette_controller as rc
 from controllers import exercice_controller as ec
 from utils.health_formulas import calculate_bmr, calculate_tdee, calculate_target_calories
+import os
 
 # --- CONFIGURATION ---
-API_KEY = "AIzaSyBF3jnfMb6MnkdoDIg0fusb_FHvfPg1XZc" # <--- Vérifiez votre clé
+API_KEY = os.getenv("GEMINI_API_KEY") 
+
+if not API_KEY:
+    raise ValueError("La clé API Gemini est manquante dans le fichier .env")
+
 genai.configure(api_key=API_KEY)
 
 def handle_chat_interaction(user_message: str, db: Session, current_user: Utilisateur):
@@ -69,17 +74,58 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
             "message": "Profil mis à jour avec succès dans la base de données."
         }
 
-    def TOOL_search_recipes(query: str):
-        """Cherche des recettes."""
-        recettes = rc.get_all_recettes(db, limit=5, search=query)
-        if not recettes: 
-            return {"resultat": "Aucune recette trouvée."}
+    def TOOL_search_recipes(query: str = None):
+        """
+        Cherche des recettes. 
+        Si 'query' est vide, sélectionne les recettes adaptées aux besoins caloriques de l'utilisateur.
+        """
+        # 1. Calculer la cible calorique pour un repas (environ 30-35% de la journée)
+        target_meal_calories = 600 # Valeur par défaut moyenne
+        user_context = "Profil standard"
+
+        if all([current_user.poids, current_user.taille, current_user.age, current_user.sexe]):
+             bmr = calculate_bmr(current_user.poids, current_user.taille, current_user.age, current_user.sexe)
+             tdee = calculate_tdee(bmr, "sedentaire") # Ou current_user.niveau_activite
+             daily_target = calculate_target_calories(tdee, current_user.objectif or "maintien")
+             
+             # On estime qu'un repas principal (Dîner) fait ~35% des apports
+             target_meal_calories = daily_target * 0.35
+             user_context = f"Objectif {current_user.objectif or 'maintien'} ({int(daily_target)} kcal/jour)"
+
+        # 2. Récupérer un large choix de recettes (50) pour pouvoir filtrer
+        # Si query est renseigné, on cherche par mot clé, sinon on prend tout
+        candidates = rc.get_all_recettes(db, limit=50, search=query)
         
-        # --- CORRECTION ICI : ENCAPSULER LA LISTE DANS UN DICT ---
+        if not candidates: 
+            return {"resultat": "Aucune recette trouvée dans la base de données."}
+
+        # 3. Filtrage Intelligent (Logique Métier)
+        # On cherche des recettes proches de la cible (+/- 200 kcal de tolérance)
+        # Ex: Si je dois manger 600kcal, j'accepte entre 400 et 800.
+        
+        suitable_recipes = []
+        for r in candidates:
+            cal = r.nombre_calories or 0 # Sécurité si null
+            
+            # Si l'utilisateur veut perdre du poids, on évite ce qui dépasse trop la cible
+            if (target_meal_calories - 250) <= cal <= (target_meal_calories + 250):
+                suitable_recipes.append(r)
+        
+        # Fallback : Si aucune recette ne correspond parfaitement, on garde les candidats initiaux
+        # pour ne pas renvoyer une liste vide (ce serait frustrant).
+        if not suitable_recipes:
+            suitable_recipes = candidates
+
+        # 4. Sélection aléatoire parmi les recettes adaptées
+        import random
+        random.shuffle(suitable_recipes)
+        selected = suitable_recipes[:5] # On en garde 5
+
         return {
+            "info_coaching": f"Basé sur votre {user_context}, je vise un repas autour de {int(target_meal_calories)} kcal.",
             "recettes_trouvees": [
                 {"nom": r.nom_recette, "calories": r.nombre_calories, "description": r.description} 
-                for r in recettes
+                for r in selected
             ]
         }
 
