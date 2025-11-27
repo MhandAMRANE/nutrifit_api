@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float , ForeignKey
 from datetime import datetime
 from database import Base
 
@@ -47,3 +47,20 @@ class Exercice(Base):
     calories_brulees = Column(Float, nullable=True)
     temps_recuperation = Column(Integer, nullable=True)
     id_seance = Column(Integer)
+
+class PlanningRepas(Base):
+    __tablename__ = "PlanningRepas"
+    id = Column(Integer, primary_key=True, index=True)
+    id_utilisateur = Column(Integer, ForeignKey("Utilisateur.id_utilisateur"))
+    id_recette = Column(Integer, ForeignKey("Recette.id_recette"))
+    date = Column(DateTime)  # Ex: 2023-11-27
+    type_repas = Column(String(20)) # 'dejeuner', 'diner', 'collation'
+    est_mange = Column(Boolean, default=False) # Pour le suivi
+
+class PlanningSeance(Base):
+    __tablename__ = "PlanningSeance"
+    id = Column(Integer, primary_key=True, index=True)
+    id_utilisateur = Column(Integer, ForeignKey("Utilisateur.id_utilisateur"))
+    id_seance = Column(Integer, ForeignKey("Seance.id_seance"))
+    date = Column(DateTime)
+    est_fait = Column(Boolean, default=False)

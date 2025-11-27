@@ -74,6 +74,42 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
             "message": "Profil mis à jour avec succès dans la base de données."
         }
 
+    def TOOL_get_week_planning():
+        """Récupère le planning de la semaine en cours pour voir ce qui est prévu."""
+        today = datetime.now()
+        end = today + timedelta(days=7)
+        # On récupère les objets bruts
+        planning_entries = pc.get_user_planning(db, current_user.id_utilisateur, today, end)
+        
+        # On les transforme en texte lisible pour l'IA
+        # Il faut faire une jointure pour avoir le nom de la recette
+        result_text = []
+        for entry in planning_entries:
+            recette = rc.get_recette_by_id(db, entry.id_recette) # Fonction existante
+            date_str = entry.date.strftime("%A") # Jour de la semaine (Lundi, Mardi...)
+            result_text.append(f"- {date_str} ({entry.type_repas}) : {recette.nom_recette} (ID_PLANNING: {entry.id})")
+            
+        return "\n".join(result_text)
+
+    def TOOL_replace_planned_meal(day_name: str, meal_type: str, new_ingredient_query: str):
+        """
+        Remplace un repas du planning.
+        1. Cherche le repas prévu ce jour-là.
+        2. Cherche une nouvelle recette avec 'new_ingredient_query'.
+        3. Fait l'échange.
+        """
+        
+        pass 
+    
+    # --- APPROCHE RECOMMANDÉE POUR L'IA (Step-by-Step) ---
+    
+    def TOOL_update_planning_entry(planning_id: int, new_recette_id: int):
+        """Met à jour une entrée précise du planning avec une nouvelle recette."""
+        success = pc.update_meal_planning(db, planning_id, new_recette_id)
+        if success:
+            return {"status": "success", "message": "Le planning a été modifié."}
+        return {"error": "Entrée de planning introuvable."}
+
     def TOOL_search_recipes(query: str = None):
         """
         Cherche des recettes. 
