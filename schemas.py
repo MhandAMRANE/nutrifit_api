@@ -41,6 +41,32 @@ class Exercice(ExerciceBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+# Schéma pour la MISE À JOUR du profil (PUT)
+class UserUpdate(BaseModel):
+    nom: Optional[str] = None
+    prenom: Optional[str] = None
+    age: Optional[int] = None
+    poids: Optional[float] = None
+    taille: Optional[float] = None
+    sexe: Optional[str] = None
+    objectif: Optional[str] = None
+
+# Schéma pour l'AFFICHAGE du profil (GET)
+class UserResponse(BaseModel):
+    id_utilisateur: int
+    nom: str
+    prenom: str
+    email: str
+    type_utilisateur: str
+    
+    # Ces champs sont optionnels car ils peuvent être vides au début
+    age: Optional[int] = None
+    poids: Optional[float] = None
+    taille: Optional[float] = None
+    sexe: Optional[str] = None
+    objectif: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class UserProfile(BaseModel):
     id_utilisateur: int

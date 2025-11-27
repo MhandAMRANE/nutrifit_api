@@ -21,6 +21,12 @@ class Utilisateur(Base):
     objectif = Column(String(50), nullable=True)
     #niveau_activite = Column(String(50), nullable=True)
 
+    age = Column(Integer, nullable=True)
+    poids = Column(Float, nullable=True)
+    taille = Column(Float, nullable=True)
+    sexe = Column(String(20), nullable=True)
+    objectif = Column(String(100), nullable=True)
+
 class Recette(Base):
     __tablename__ = "Recette"
 

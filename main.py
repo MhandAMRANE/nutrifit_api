@@ -215,3 +215,39 @@ def chat_with_coach(
         current_user=current_user
     )
     return {"response": ai_response}
+
+@app.get("/users/me", response_model=schemas.UserResponse)
+def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
+    """
+    Affiche le profil complet (y compris poids, taille, etc.)
+    """
+    return current_user
+
+@app.put("/users/me", response_model=schemas.UserResponse)
+def update_user_profile(
+    user_update: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Permet à l'utilisateur de mettre à jour ses infos (poids, taille, objectif...)
+    """
+    # On met à jour uniquement les champs fournis
+    if user_update.nom is not None:
+        current_user.nom = user_update.nom
+    if user_update.prenom is not None:
+        current_user.prenom = user_update.prenom
+    if user_update.age is not None:
+        current_user.age = user_update.age
+    if user_update.poids is not None:
+        current_user.poids = user_update.poids
+    if user_update.taille is not None:
+        current_user.taille = user_update.taille
+    if user_update.sexe is not None:
+        current_user.sexe = user_update.sexe
+    if user_update.objectif is not None:
+        current_user.objectif = user_update.objectif
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user
