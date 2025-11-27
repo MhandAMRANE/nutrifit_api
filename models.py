@@ -15,6 +15,12 @@ class Utilisateur(Base):
     token_expiration = Column(DateTime)
     type_utilisateur = Column(String(50), default='client')
 
+    age = Column(Integer, nullable=True)
+    poids = Column(Float, nullable=True)
+    taille = Column(Float, nullable=True)
+    sexe = Column(String(20), nullable=True)
+    objectif = Column(String(100), nullable=True)
+
 class Recette(Base):
     __tablename__ = "Recette"
 
