@@ -1,5 +1,5 @@
 # nutrifit_api/schemas.py
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional
 
 # --- Schémas pour les Recettes ---
@@ -17,11 +17,11 @@ class RecetteCreate(RecetteBase):
 
 class Recette(RecetteBase):
     id_recette: int
-    image_url: str | None = None
+    image: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_validator('image_url', mode='before')
+    @field_validator('image', mode='before')
     def set_default_image(cls, v):
         # Si la valeur est None ou vide, on renvoie l'URL par défaut
         if not v:

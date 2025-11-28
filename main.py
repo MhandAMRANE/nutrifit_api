@@ -264,8 +264,32 @@ def upload_recipe_image(
     # On stocke l'URL relative accessible via l'API
     url_bdd = f"/static/images/recettes/{unique_filename}"
     
-    recette.image_url = url_bdd
+    recette.image = url_bdd
     db.commit()
     db.refresh(recette)
 
     return {"message": "Image uploadée", "url": url_bdd}
+
+
+def delete_recette(db: Session, recette_id: int):
+    # 1. On récupère la recette AVANT de la supprimer
+    db_recette = get_recette_by_id(db, recette_id)
+    
+    if db_recette:
+        # 2. Si elle a une image, on essaie de supprimer le fichier
+        if db_recette.image_url:
+            # db_recette.image_url ressemble à "/static/images/recettes/abc.jpg"
+            # On doit enlever le "/" du début pour avoir un chemin relatif correct
+            file_path = db_recette.image_url.lstrip("/") 
+            
+            # On vérifie si le fichier existe pour éviter de planter
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"🗑️ Image supprimée : {file_path}")
+
+        # 3. Suppression en base de données
+        db.delete(db_recette)
+        db.commit()
+        return True
+        
+    return False
