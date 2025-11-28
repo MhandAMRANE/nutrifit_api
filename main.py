@@ -1,29 +1,22 @@
-# nutrifit_api/main.py
 from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from typing import List
 
-# Importe vos modules de base
 from database import Base, engine, SessionLocal
-from models import Utilisateur, Recette # Importe Recette
-import schemas # Importe le nouveau fichier schemas
-import auth # Importe le nouveau fichier d'auth
+from models import Utilisateur, Recette
+import schemas
+import auth 
 
-# Importe les contrôleurs
 from controllers.user_controller import signup_user, login_user, verify_code
-from controllers import recette_controller as rc # Renomme pour clarté
+from controllers import recette_controller as rc
 from controllers import exercice_controller as ec
 from controllers import chat_controller as cc
 
-# Création de la base (votre code existant)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="NutriFit API")
 
-# --- Dépendances ---
-# (Celle-ci est déplacée dans auth.py, mais on la garde ici
-# pour les routes non protégées si besoin)
 def get_db():
     db = SessionLocal()
     try:
@@ -31,7 +24,6 @@ def get_db():
     finally:
         db.close()
 
-# --- Modèles Pydantic pour l'utilisateur (votre code existant) ---
 class SignupModel(BaseModel):
     nom: str
     prenom: str
@@ -52,8 +44,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
 
-# --- Endpoints Utilisateur (Votre code existant) ---
-
 @app.get("/")
 def home():
     return {"message": "Bienvenue sur l'API NutriFit "}
@@ -68,18 +58,13 @@ def verify(data: VerifyCodeModel):
 
 @app.post("/login")
 def login(data: LoginModel):
-    # Note: On suppose que login_user renvoie le token
     return login_user(data.email, data.mot_de_passe)
-
-
-# --- NOUVEAUX ENDPOINTS POUR LES RECETTES ---
 
 @app.get("/recettes", response_model=List[schemas.Recette])
 def get_recettes(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
-    # SÉCURITÉ : L'utilisateur doit être au minimum connecté
     current_user: Utilisateur = Depends(auth.get_current_user)
 ):
     """
@@ -93,7 +78,6 @@ def get_recettes(
 def get_recette(
     recette_id: int,
     db: Session = Depends(get_db),
-    # SÉCURITÉ : L'utilisateur doit être au minimum connecté
     current_user: Utilisateur = Depends(auth.get_current_user)
 ):
     """
@@ -109,7 +93,6 @@ def get_recette(
 def create_new_recette(
     recette: schemas.RecetteCreate,
     db: Session = Depends(get_db),
-    # SÉCURITÉ : Seul un ADMIN peut créer une recette
     current_admin: Utilisateur = Depends(auth.get_current_admin_user)
 ):
     """
@@ -122,7 +105,6 @@ def update_existing_recette(
     recette_id: int,
     recette: schemas.RecetteCreate,
     db: Session = Depends(get_db),
-    # SÉCURITÉ : Seul un ADMIN peut modifier
     current_admin: Utilisateur = Depends(auth.get_current_admin_user)
 ):
     """
@@ -137,7 +119,6 @@ def update_existing_recette(
 def delete_existing_recette(
     recette_id: int,
     db: Session = Depends(get_db),
-    # SÉCURITÉ : Seul un ADMIN peut supprimer
     current_admin: Utilisateur = Depends(auth.get_current_admin_user)
 ):
     """
