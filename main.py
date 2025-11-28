@@ -3,7 +3,11 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from typing import List
-
+from fastapi.staticfiles import StaticFiles
+from fastapi import File, UploadFile
+import shutil
+import uuid
+import os
 # Importe vos modules de base
 from database import Base, engine, SessionLocal
 from models import Utilisateur, Recette # Importe Recette
@@ -19,6 +23,9 @@ from controllers import exercice_controller as ec
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="NutriFit API")
+
+os.makedirs("static/images/recettes", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- Dépendances ---
 # (Celle-ci est déplacée dans auth.py, mais on la garde ici
@@ -230,3 +237,35 @@ def update_user_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+@app.post("/recettes/{recette_id}/image")
+def upload_recipe_image(
+    recette_id: int, 
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    # current_user... (Sécurité)
+):
+    # 1. Vérifier que la recette existe
+    recette = rc.get_recette_by_id(db, recette_id)
+    if not recette:
+        raise HTTPException(status_code=404, detail="Recette non trouvée")
+
+    # 2. Générer un nom de fichier unique (Sécurité + Anti-doublon)
+    # Ex: "mon_image.png" devient "a1b2c3d4-....png"
+    extension = file.filename.split(".")[-1]
+    unique_filename = f"{uuid.uuid4()}.{extension}"
+    file_path = f"static/images/recettes/{unique_filename}"
+
+    # 3. Sauvegarder le fichier sur le disque dur
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # 4. Mettre à jour l'URL dans la BDD
+    # On stocke l'URL relative accessible via l'API
+    url_bdd = f"/static/images/recettes/{unique_filename}"
+    
+    recette.image_url = url_bdd
+    db.commit()
+    db.refresh(recette)
+
+    return {"message": "Image uploadée", "url": url_bdd}

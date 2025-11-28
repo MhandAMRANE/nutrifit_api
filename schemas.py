@@ -16,11 +16,17 @@ class RecetteCreate(RecetteBase):
     pass
 
 class Recette(RecetteBase):
-    # Pour la lecture (ce qu'on renvoie au client)
     id_recette: int
-    
-    # Permet à Pydantic de lire depuis un objet SQLAlchemy
+    image_url: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator('image_url', mode='before')
+    def set_default_image(cls, v):
+        # Si la valeur est None ou vide, on renvoie l'URL par défaut
+        if not v:
+            return "/static/images/default.jpg"
+        return v
 
 
 # --- Schémas Exercices ---
