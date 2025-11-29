@@ -35,6 +35,10 @@ def update_exercice(db: Session, exercice_id: int, exercice_data: ExerciceCreate
         db_exercice.temps_recuperation = exercice_data.temps_recuperation
         db_exercice.id_seance = exercice_data.id_seance
 
+        db_exercice.muscle_cible = exercice_data.muscle_cible
+        db_exercice.materiel = exercice_data.materiel
+        db_exercice.difficulte = exercice_data.difficulte
+
         db.commit()
         db.refresh(db_exercice)
         return db_exercice

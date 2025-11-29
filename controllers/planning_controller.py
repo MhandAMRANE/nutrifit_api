@@ -74,3 +74,12 @@ def update_meal_planning(db: Session, planning_id: int, new_recipe_id: int):
         db.commit()
         return True
     return False
+
+def update_seance_planning(db: Session, planning_id: int, new_seance_id: int):
+    """Change une séance prévue dans le planning."""
+    entry = db.query(PlanningSeance).filter(PlanningSeance.id == planning_id).first()
+    if entry:
+        entry.id_seance = new_seance_id
+        db.commit()
+        return True
+    return False

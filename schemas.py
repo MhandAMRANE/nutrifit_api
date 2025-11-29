@@ -1,6 +1,6 @@
 # nutrifit_api/schemas.py
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, Union, List, Dict
 
 # --- Schémas pour les Recettes ---
 
@@ -26,19 +26,23 @@ class Recette(RecetteBase):
 # --- Schémas Exercices ---
 class ExerciceBase(BaseModel):
     nom_exercice: str
-    description_exercice: str | None = None
-    type_exercice: str | None = None
-    nombre_series: int | None = None
-    calories_brulees: float | None = None
-    temps_recuperation: int | None = None
-    id_seance: int | None = None
+    description_exercice: Optional[str] = None
+    type_exercice: Optional[str] = None
+    nombre_series: Optional[int] = None
+    calories_brulees: Optional[float] = None
+    temps_recuperation: Optional[int] = None
+    id_seance: Optional[int] = None
+    
+    # --- AJOUTS ---
+    muscle_cible: Optional[Union[List[str], Dict]] = None
+    materiel: Optional[str] = None
+    difficulte: Optional[str] = None
 
 class ExerciceCreate(ExerciceBase):
     pass
 
 class Exercice(ExerciceBase):
     id_exercice: int
-
     model_config = ConfigDict(from_attributes=True)
 
 # Schéma pour la MISE À JOUR du profil (PUT)
