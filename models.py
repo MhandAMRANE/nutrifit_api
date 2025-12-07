@@ -15,6 +15,16 @@ class Utilisateur(Base):
     token_expiration = Column(DateTime)
     type_utilisateur = Column(String(50), default='client')
 
+    sexe = Column(Enum("masculin", "feminin", name="sexe_enum"), nullable=True)
+    age = Column(TINYINT(unsigned=True), nullable=True)
+    poids_kg = Column(Float, nullable=True)
+    taille_cm = Column(SmallInteger, nullable=True)
+    regime_alimentaire = Column(String(100), nullable=True)
+    objectif = Column(String(100), nullable=True)
+    equipements = Column(String(255), nullable=True)
+    nb_jours_entrainement = Column(TINYINT(unsigned=True), nullable=True)
+    path_pp = Column(String(255), nullable=True)
+
 class Recette(Base):
     __tablename__ = "Recette"
 

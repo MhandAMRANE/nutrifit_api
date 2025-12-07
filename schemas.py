@@ -1,6 +1,45 @@
 # nutrifit_api/schemas.py
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
+
+# --- Schémas pour les Utilisateurs ---
+
+class UserBase(BaseModel):
+    nom: str
+    prenom: Optional[str] = None
+    email: EmailStr
+
+    sexe: Optional[str] = None
+    age: Optional[int] = None
+    poids_kg: Optional[float] = None
+    taille_cm: Optional[int] = None
+    regime_alimentaire: Optional[str] = None
+    objectif: Optional[str] = None
+    equipements: Optional[str] = None
+    nb_jours_entrainement: Optional[int] = None
+    path_pp: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class UserResponse(UserBase):
+    id_utilisateur: int
+    type_utilisateur: str
+
+class UserUpdate(BaseModel):
+    nom: Optional[str] = None
+    prenom: Optional[str] = None
+
+    sexe: Optional[str] = None
+    age: Optional[int] = None
+    poids_kg: Optional[float] = None
+    taille_cm: Optional[int] = None
+    regime_alimentaire: Optional[str] = None
+    objectif: Optional[str] = None
+    equipements: Optional[str] = None
+    nb_jours_entrainement: Optional[int] = None
+    path_pp: Optional[str] = None
+
 
 # --- Schémas pour les Recettes ---
 
@@ -16,17 +55,11 @@ class RecetteCreate(RecetteBase):
     pass
 
 class Recette(RecetteBase):
+    # Pour la lecture (ce qu'on renvoie au client)
     id_recette: int
-    image: Optional[str] = None
-
+    
+    # Permet à Pydantic de lire depuis un objet SQLAlchemy
     model_config = ConfigDict(from_attributes=True)
-
-    @field_validator('image', mode='before')
-    def set_default_image(cls, v):
-        # Si la valeur est None ou vide, on renvoie l'URL par défaut
-        if not v:
-            return "/static/images/default.jpg"
-        return v
 
 
 # --- Schémas Exercices ---
@@ -44,32 +77,5 @@ class ExerciceCreate(ExerciceBase):
 
 class Exercice(ExerciceBase):
     id_exercice: int
-
-    model_config = ConfigDict(from_attributes=True)
-
-# Schéma pour la MISE À JOUR du profil (PUT)
-class UserUpdate(BaseModel):
-    nom: Optional[str] = None
-    prenom: Optional[str] = None
-    age: Optional[int] = None
-    poids: Optional[float] = None
-    taille: Optional[float] = None
-    sexe: Optional[str] = None
-    objectif: Optional[str] = None
-
-# Schéma pour l'AFFICHAGE du profil (GET)
-class UserResponse(BaseModel):
-    id_utilisateur: int
-    nom: str
-    prenom: str
-    email: str
-    type_utilisateur: str
-    
-    # Ces champs sont optionnels car ils peuvent être vides au début
-    age: Optional[int] = None
-    poids: Optional[float] = None
-    taille: Optional[float] = None
-    sexe: Optional[str] = None
-    objectif: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
