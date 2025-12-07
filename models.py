@@ -32,7 +32,7 @@ class Recette(Base):
     description = Column(Text, nullable=True)
     ingredients = Column(Text, nullable=False) 
     nombre_calories = Column(Integer, nullable=True, default=0)
-    image_url = Column(String(255), nullable=True)
+    image = Column(String(255), nullable=True)
     # tags = Column(String(255), nullable=True) # À ajouter plus tard si besoin
 
 # --- AJOUT DE LA CLASSE MANQUANTE ---
