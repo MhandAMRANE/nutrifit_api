@@ -3,11 +3,10 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from typing import List
-from fastapi.staticfiles import StaticFiles
-from fastapi import File, UploadFile
-import shutil
-import uuid
-import os
+
+import logging
+
+
 # Importe vos modules de base
 from database import Base, engine, SessionLocal
 from models import Utilisateur, Recette # Importe Recette
@@ -22,10 +21,14 @@ from controllers import exercice_controller as ec
 # Création de la base (votre code existant)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="NutriFit API")
+logger = logging.getLogger(__name__)
 
-os.makedirs("static/images/recettes", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+from fastapi import FastAPI
+
+app = FastAPI(
+    title="NutriFit API",
+    root_path="/nutrifit-api",
+)
 
 # --- Dépendances ---
 # (Celle-ci est déplacée dans auth.py, mais on la garde ici
@@ -60,7 +63,19 @@ def home():
 
 @app.post("/signup")
 def signup(data: SignupModel):
-    return signup_user(data.nom, data.prenom, data.email, data.mot_de_passe)
+    try:
+        # appel normal de ton contrôleur
+        return signup_user(
+            data.nom,
+            data.prenom,
+            data.email,
+            data.mot_de_passe,
+        )
+    except Exception as e:
+        # log côté serveur
+        logger.exception("Erreur pendant /signup")
+        # et renvoi du détail au client pour debug
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/verify_code")
 def verify(data: VerifyCodeModel):
@@ -201,95 +216,3 @@ def delete_exercice(
     if not ec.delete_exercice(db, exercice_id):
         raise HTTPException(404, "Exercice non trouvé")
     return {"message": "Exercice supprimé"}
-
-@app.get("/users/me", response_model=schemas.UserResponse)
-def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
-    """
-    Affiche le profil complet (y compris poids, taille, etc.)
-    """
-    return current_user
-
-@app.put("/users/me", response_model=schemas.UserResponse)
-def update_user_profile(
-    user_update: schemas.UserUpdate,
-    db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(auth.get_current_user)
-):
-    """
-    Permet à l'utilisateur de mettre à jour ses infos (poids, taille, objectif...)
-    """
-    # On met à jour uniquement les champs fournis
-    if user_update.nom is not None:
-        current_user.nom = user_update.nom
-    if user_update.prenom is not None:
-        current_user.prenom = user_update.prenom
-    if user_update.age is not None:
-        current_user.age = user_update.age
-    if user_update.poids is not None:
-        current_user.poids = user_update.poids
-    if user_update.taille is not None:
-        current_user.taille = user_update.taille
-    if user_update.sexe is not None:
-        current_user.sexe = user_update.sexe
-    if user_update.objectif is not None:
-        current_user.objectif = user_update.objectif
-
-    db.commit()
-    db.refresh(current_user)
-    return current_user
-
-@app.post("/recettes/{recette_id}/image")
-def upload_recipe_image(
-    recette_id: int, 
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    # current_user... (Sécurité)
-):
-    # 1. Vérifier que la recette existe
-    recette = rc.get_recette_by_id(db, recette_id)
-    if not recette:
-        raise HTTPException(status_code=404, detail="Recette non trouvée")
-
-    # 2. Générer un nom de fichier unique (Sécurité + Anti-doublon)
-    # Ex: "mon_image.png" devient "a1b2c3d4-....png"
-    extension = file.filename.split(".")[-1]
-    unique_filename = f"{uuid.uuid4()}.{extension}"
-    file_path = f"static/images/recettes/{unique_filename}"
-
-    # 3. Sauvegarder le fichier sur le disque dur
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # 4. Mettre à jour l'URL dans la BDD
-    # On stocke l'URL relative accessible via l'API
-    url_bdd = f"/static/images/recettes/{unique_filename}"
-    
-    recette.image = url_bdd
-    db.commit()
-    db.refresh(recette)
-
-    return {"message": "Image uploadée", "url": url_bdd}
-
-
-def delete_recette(db: Session, recette_id: int):
-    # 1. On récupère la recette AVANT de la supprimer
-    db_recette = get_recette_by_id(db, recette_id)
-    
-    if db_recette:
-        # 2. Si elle a une image, on essaie de supprimer le fichier
-        if db_recette.image_url:
-            # db_recette.image_url ressemble à "/static/images/recettes/abc.jpg"
-            # On doit enlever le "/" du début pour avoir un chemin relatif correct
-            file_path = db_recette.image_url.lstrip("/") 
-            
-            # On vérifie si le fichier existe pour éviter de planter
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                print(f"🗑️ Image supprimée : {file_path}")
-
-        # 3. Suppression en base de données
-        db.delete(db_recette)
-        db.commit()
-        return True
-        
-    return False
