@@ -107,30 +107,26 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
         Cherche des recettes. 
         Si 'query' est VIDE, sélectionne automatiquement des recettes adaptées aux calories de l'utilisateur.
         """
-        # --- LOGIQUE INTELLIGENTE (Remise en place) ---
-        target_meal_calories = 600 # Défaut
+        target_meal_calories = 600 
         user_context = "Standard"
 
         if all([current_user.poids, current_user.taille, current_user.age, current_user.sexe]):
              bmr = calculate_bmr(current_user.poids, current_user.taille, current_user.age, current_user.sexe)
              tdee = calculate_tdee(bmr, "sedentaire")
              daily_target = calculate_target_calories(tdee, current_user.objectif or "maintien")
-             target_meal_calories = daily_target * 0.35 # 35% pour un repas principal
+             target_meal_calories = daily_target * 0.35
              user_context = f"Objectif {current_user.objectif} ({int(daily_target)} kcal/j)"
 
-        # On récupère large pour filtrer
         candidates = rc.get_all_recettes(db, limit=50, search=query)
         if not candidates: return {"resultat": "Aucune recette trouvée."}
 
-        # Filtrage calorique si pas de mot clé précis
         suitable = []
         if not query:
             for r in candidates:
                 cal = r.nombre_calories or 0
-                # Tolérance +/- 200 kcal
                 if (target_meal_calories - 250) <= cal <= (target_meal_calories + 250):
                     suitable.append(r)
-            if not suitable: suitable = candidates # Fallback
+            if not suitable: suitable = candidates
         else:
             suitable = candidates
 

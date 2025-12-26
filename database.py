@@ -14,6 +14,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
+DB_USE_SSL = os.getenv("DB_USE_SSL", "false").lower() == "true"
 
 # 2. Encoder le mot de passe (Sécurité)
 # Si le mot de passe contient des caractères spéciaux, cela évite le crash
@@ -22,26 +23,19 @@ encoded_password = quote_plus(DB_PASSWORD)
 # 3. Construire l'URL
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# 4. Configuration SSL pour TiDB Cloud
-ssl_args = {
-    "ssl": {
-        "ca": certifi.where()
-    }
-}
-
 try:
     engine = create_engine(
         DATABASE_URL,
-        connect_args=ssl_args,
         echo=False,
         pool_pre_ping=True
     )
 
     with engine.connect() as connection:
-        print(f"✅ Connexion réussie à TiDB Cloud ({DB_HOST}) !")
+        print(f"✅ Connexion réussie à la base de données ({DB_HOST}) !")
 
 except Exception as e:
-    print("❌ ERREUR : Impossible de se connecter à TiDB.")
+    print(DB_HOST)
+    print("❌ ERREUR : Impossible de se connecter à la base de données.")
     print(f"Détail : {e}")
     exit(1)
 

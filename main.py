@@ -3,6 +3,9 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from typing import List
 
+import logging
+
+
 from database import Base, engine, SessionLocal
 from models import Utilisateur, Recette
 import schemas
@@ -15,7 +18,14 @@ from controllers import chat_controller as cc
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="NutriFit API")
+logger = logging.getLogger(__name__)
+
+from fastapi import FastAPI
+
+app = FastAPI(
+    title="NutriFit API",
+    root_path="/nutrifit-api",
+)
 
 def get_db():
     db = SessionLocal()
@@ -50,7 +60,19 @@ def home():
 
 @app.post("/signup")
 def signup(data: SignupModel):
-    return signup_user(data.nom, data.prenom, data.email, data.mot_de_passe)
+    try:
+        # appel normal de ton contrôleur
+        return signup_user(
+            data.nom,
+            data.prenom,
+            data.email,
+            data.mot_de_passe,
+        )
+    except Exception as e:
+        # log côté serveur
+        logger.exception("Erreur pendant /signup")
+        # et renvoi du détail au client pour debug
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/verify_code")
 def verify(data: VerifyCodeModel):
@@ -183,6 +205,17 @@ def delete_exercice(
         raise HTTPException(404, "Exercice non trouvé")
     return {"message": "Exercice supprimé"}
 
+
+
+    
+    from auth import get_current_user
+
+    @app.get("/users/me", response_model=schemas.UserResponse)
+    def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
+        """
+        Retourne le profil complet de l'utilisateur connecté.
+        """
+        return current_user
 @app.post("/chat", response_model=ChatResponse)
 def chat_with_coach(
     request: ChatRequest,
@@ -204,31 +237,41 @@ def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
     """
     return current_user
 
-@app.put("/users/me", response_model=schemas.UserResponse)
-def update_user_profile(
-    user_update: schemas.UserUpdate,
-    db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(auth.get_current_user)
-):
-    """
-    Permet à l'utilisateur de mettre à jour ses infos (poids, taille, objectif...)
-    """
-    # On met à jour uniquement les champs fournis
-    if user_update.nom is not None:
-        current_user.nom = user_update.nom
-    if user_update.prenom is not None:
-        current_user.prenom = user_update.prenom
-    if user_update.age is not None:
-        current_user.age = user_update.age
-    if user_update.poids is not None:
-        current_user.poids = user_update.poids
-    if user_update.taille is not None:
-        current_user.taille = user_update.taille
-    if user_update.sexe is not None:
-        current_user.sexe = user_update.sexe
-    if user_update.objectif is not None:
-        current_user.objectif = user_update.objectif
 
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    @app.put("/users/me", response_model=schemas.UserResponse)
+    def update_user_profile(
+        user_update: schemas.UserUpdate,
+        db: Session = Depends(get_db),
+        current_user: Utilisateur = Depends(auth.get_current_user),
+    ):
+        """
+        Met à jour les infos de profil de l'utilisateur connecté.
+        Les champs sont tous optionnels.
+        """
+        if user_update.nom is not None:
+            current_user.nom = user_update.nom
+        if user_update.prenom is not None:
+            current_user.prenom = user_update.prenom
+
+        if user_update.sexe is not None:
+            current_user.sexe = user_update.sexe
+        if user_update.age is not None:
+            current_user.age = user_update.age
+        if user_update.poids_kg is not None:
+            current_user.poids_kg = user_update.poids_kg
+        if user_update.taille_cm is not None:
+            current_user.taille_cm = user_update.taille_cm
+        if user_update.regime_alimentaire is not None:
+            current_user.regime_alimentaire = user_update.regime_alimentaire
+        if user_update.objectif is not None:
+            current_user.objectif = user_update.objectif
+        if user_update.equipements is not None:
+            current_user.equipements = user_update.equipements
+        if user_update.nb_jours_entrainement is not None:
+            current_user.nb_jours_entrainement = user_update.nb_jours_entrainement
+        if user_update.path_pp is not None:
+            current_user.path_pp = user_update.path_pp
+
+        db.commit()
+        db.refresh(current_user)
+        return current_user

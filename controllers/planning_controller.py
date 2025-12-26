@@ -6,47 +6,43 @@ from utils.health_formulas import calculate_bmr, calculate_tdee, calculate_targe
 
 def generate_weekly_plan(db: Session, user_id: int, start_date: datetime):
     """
-    Génère un planning complet pour 7 jours basé sur le profil.
+    Génère un planning intelligent : sélectionne des recettes adaptées
+    aux besoins caloriques calculés de l'utilisateur.
     """
     user = db.query(Utilisateur).filter(Utilisateur.id_utilisateur == user_id).first()
     
-    # 1. Calcul des besoins
-    # (On reprend votre logique de health_formulas)
-    bmr = calculate_bmr(user.poids, user.taille, user.age, user.sexe)
-    tdee = calculate_tdee(bmr, user.niveau_activite or "sedentaire")
-    target_cal = calculate_target_calories(tdee, user.objectif)
+    bmr = calculate_bmr(user.poids_kg, user.taille_cm, user.age, user.sexe)
+    tdee = calculate_tdee(bmr, user.nb_jours_entrainement or "sedentaire")
+    daily_target = calculate_target_calories(tdee, user.objectif)
     
-    # Cible par repas (simplifiée)
-    lunch_target = target_cal * 0.35
-    dinner_target = target_cal * 0.35
+    target_per_meal = daily_target * 0.35
     
-    # 2. Récupérer les recettes éligibles
-    # Ici, on fait simple, mais on pourrait filtrer par tags
     all_recipes = db.query(Recette).all()
     all_workouts = db.query(Seance).all()
+
+    compatible_recipes = [
+        r for r in all_recipes 
+        if r.calories is not None and (target_per_meal - 250) <= r.calories <= (target_per_meal + 250)
+    ]
     
-    # 3. Remplir la semaine
+    if not compatible_recipes:
+        compatible_recipes = all_recipes
+
     for i in range(7):
         current_day = start_date + timedelta(days=i)
         
-        # --- REPAS (Déjeuner & Dîner) ---
-        # On choisit 2 recettes au hasard qui "fit" à peu près les calories
-        # (Version simple : random)
-        day_recipes = random.sample(all_recipes, 2) if len(all_recipes) >= 2 else all_recipes
-        
-        if day_recipes:
-            # Déjeuner
+        if len(compatible_recipes) >= 2:
+            day_recipes = random.sample(compatible_recipes, 2)
+            
             db.add(PlanningRepas(
                 id_utilisateur=user_id, id_recette=day_recipes[0].id_recette,
                 date=current_day, type_repas="dejeuner"
             ))
-            # Dîner
             db.add(PlanningRepas(
                 id_utilisateur=user_id, id_recette=day_recipes[1].id_recette,
                 date=current_day, type_repas="diner"
             ))
-            
-        # --- SPORT (1 jour sur 2 par exemple) ---
+
         if i % 2 == 0 and all_workouts: 
             workout = random.choice(all_workouts)
             db.add(PlanningSeance(
@@ -55,7 +51,11 @@ def generate_weekly_plan(db: Session, user_id: int, start_date: datetime):
             ))
             
     db.commit()
-    return {"message": "Planning généré avec succès pour 7 jours."}
+    return {
+        "message": "Planning intelligent généré.", 
+        "cible_jour": daily_target, 
+        "cible_repas": int(target_per_meal)
+    }
 
 def get_user_planning(db: Session, user_id: int, start_date: datetime, end_date: datetime):
     """Récupère le planning pour l'affichage ou l'IA"""
