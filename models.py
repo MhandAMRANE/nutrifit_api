@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 class Utilisateur(Base):
-    __tablename__ = "Utilisateur"
+    __tablename__ = "Utilisateur"  # <--- On garde ton nom d'origine (Singulier/Majuscule)
 
     id_utilisateur = Column(Integer, primary_key=True, index=True)
     nom = Column(String(100), nullable=False)
@@ -13,7 +13,7 @@ class Utilisateur(Base):
     
     # Infos physiques & Profil
     sexe = Column(Enum('masculin', 'feminin'), nullable=True)
-    age = Column(Integer, nullable=True) # tinyint unsigned en SQL
+    age = Column(Integer, nullable=True) 
     poids_kg = Column(DECIMAL(5, 2), nullable=True)
     taille_cm = Column(SmallInteger, nullable=True)
     regime_alimentaire = Column(String(100))
@@ -36,7 +36,8 @@ class Calendrier(Base):
     __tablename__ = "Calendrier"
     
     id_calendrier = Column(Integer, primary_key=True, index=True)
-    id_utilisateur = Column(Integer, ForeignKey("Utilisateur.id_utilisateur"))
+    # Correction : On pointe vers "Utilisateur" (ton vrai nom de table)
+    id_utilisateur = Column(Integer, ForeignKey("Utilisateur.id_utilisateur")) 
     jour = Column(Date, nullable=False)
 
     utilisateur = relationship("Utilisateur", back_populates="calendriers")
@@ -45,18 +46,22 @@ class Calendrier(Base):
 
 
 class Recette(Base):
-    __tablename__ = "Recette"
+    __tablename__ = "Recette"  # <--- On revient sur ta table existante
 
     id_recette = Column(Integer, primary_key=True, index=True)
     nom_recette = Column(String(100), nullable=False)
     description = Column(Text)
     categorie = Column(String(50))
-    calories = Column(Integer)   # Attention: s'appelle 'calories' dans votre SQL, pas 'nombre_calories'
+    calories = Column(Integer)   
     proteines = Column(Float)
     glucides = Column(Float)
     lipides = Column(Float)
+    ingredients = Column(Text)
+    tags = Column(Text)
+    servings = Column(Integer)
+    image_url = Column(String(255))
+    cautions = Column(Text)
     
-    # Relation Many-to-Many avec Repas via Repas_Recette
     repas_associes = relationship("RepasRecette", back_populates="recette")
 
 
@@ -75,7 +80,6 @@ class Repas(Base):
 class RepasRecette(Base):
     __tablename__ = "Repas_Recette"
     
-    # Table d'association (pas de clé primaire 'id' dans votre SQL, c'est une clé composite)
     id_repas = Column(Integer, ForeignKey("Repas.id_repas"), primary_key=True)
     id_recette = Column(Integer, ForeignKey("Recette.id_recette"), primary_key=True)
 
@@ -91,7 +95,7 @@ class Exercice(Base):
     description_exercice = Column(Text)
     type_exercice = Column(String(50))
     image_path = Column(String(255))
-    muscle_cible = Column(JSON) # JSON supporté par MariaDB/MySQL récents
+    muscle_cible = Column(JSON)
     materiel = Column(Enum('poids_du_corps', 'materiel_maison', 'salle_de_sport'), default='poids_du_corps')
 
 
@@ -111,6 +115,7 @@ class SeanceExercice(Base):
     __tablename__ = "Seance_Exercice"
 
     id = Column(Integer, primary_key=True, index=True)
+    # Correction des FK pour pointer vers "Seance" et "Exercice"
     id_seance = Column(Integer, ForeignKey("Seance.id_seance"))
     id_exercice = Column(Integer, ForeignKey("Exercice.id_exercice"))
     
@@ -121,3 +126,29 @@ class SeanceExercice(Base):
 
     seance = relationship("Seance", back_populates="seance_exercices")
     exercice = relationship("Exercice")
+
+
+class PlanningRepas(Base):
+    __tablename__ = "planning_repas"
+
+    id_planning = Column(Integer, primary_key=True, index=True)
+    
+    # C'EST ICI QUE C'ETAIT FAUX : On corrige pour pointer vers "Utilisateur" et "Recette"
+    id_utilisateur = Column(Integer, ForeignKey("Utilisateur.id_utilisateur"))
+    id_recette = Column(Integer, ForeignKey("Recette.id_recette"))
+    
+    date = Column(Date)
+    type_repas = Column(String(50))
+
+
+class PlanningSeance(Base):
+    __tablename__ = "planning_seances"
+
+    id_planning_seance = Column(Integer, primary_key=True, index=True)
+    
+    # Correction ici aussi : "Utilisateur" et "Seance"
+    id_utilisateur = Column(Integer, ForeignKey("Utilisateur.id_utilisateur"))
+    id_seance = Column(Integer, ForeignKey("Seance.id_seance"))
+    
+    date = Column(Date)
+    statut = Column(String(50), default="prevu")

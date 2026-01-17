@@ -9,6 +9,13 @@ from urllib.parse import quote_plus  # <--- Indispensable pour la sécurité
 # 1. Charger les variables
 load_dotenv()
 
+print("--- DEBUG CONFIG ---")
+print(f"User: {os.getenv('DB_USER')}")
+print(f"Password: {os.getenv('DB_PASSWORD')}")
+print(f"Host: {os.getenv('DB_HOST')}")
+print("--------------------")
+
+
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
