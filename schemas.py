@@ -21,6 +21,10 @@ class RecetteBase(BaseModel):
     proteines: Optional[float] = None
     glucides: Optional[float] = None
     lipides: Optional[float] = None
+    ingredients: Optional[str] = None 
+    tags: Optional[str] = None
+    image_url: Optional[str] = None
+    cautions: Optional[str] = None
 
 class RecetteCreate(RecetteBase):
     pass

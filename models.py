@@ -58,7 +58,6 @@ class Recette(Base):
     lipides = Column(Float)
     ingredients = Column(Text)
     tags = Column(Text)
-    servings = Column(Integer)
     image_url = Column(String(255))
     cautions = Column(Text)
     
