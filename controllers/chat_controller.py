@@ -20,12 +20,11 @@ genai.configure(api_key=API_KEY)
 def handle_chat_interaction(user_message: str, db: Session, current_user: Utilisateur):
     
     # 1. RÉCUPÉRATION DU CONTEXTE (TAGS DISPONIBLES)
-    # On récupère la liste des tags pour que l'IA sache ce qui existe
     available_tags = rc.get_available_tags(db)
-    tags_context_str = ", ".join(available_tags[:50]) # On en garde 50 max pour pas surcharger le prompt
+    tags_context_str = ", ".join(available_tags[:50]) 
     
     # =========================================================================
-    # OUTILS (Code identique à avant, je ne change que search_recipes pour le commentaire)
+    # OUTILS
     # =========================================================================
     
     def TOOL_get_health_profile():
@@ -51,25 +50,39 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
         user = db.query(Utilisateur).filter(Utilisateur.id_utilisateur == current_user.id_utilisateur).first()
         if not user: return {"erreur": "Utilisateur introuvable."}
 
+        # --- NORMALISATION INTELLIGENTE ---
         if sexe:
             s_clean = sexe.lower().strip()
             if s_clean in ['homme', 'h', 'masculin', 'male']: user.sexe = 'masculin'
             elif s_clean in ['femme', 'f', 'feminin', 'female']: user.sexe = 'feminin'
 
+        if objectif:
+            o_clean = objectif.lower().strip()
+            # On standardise pour que l'IA ne pose pas de questions bêtes
+            if any(x in o_clean for x in ['perdre', 'maigrir', 'mincir', 'gras', 'weight']):
+                user.objectif = 'perte_poids'
+            elif any(x in o_clean for x in ['muscl', 'masse', 'gros', 'gain']):
+                user.objectif = 'prise_masse'
+            elif any(x in o_clean for x in ['maintien', 'stabil', 'forme']):
+                user.objectif = 'maintien'
+            else:
+                user.objectif = objectif # On garde le texte brut si on sait pas
+
         if age: user.age = age
         if poids: user.poids_kg = poids
         if taille: user.taille_cm = taille
-        if objectif: user.objectif = objectif
         
         db.commit()
         db.refresh(user)
+        
+        # Update objet local
         current_user.age = user.age
         current_user.sexe = user.sexe
         current_user.poids_kg = user.poids_kg
         current_user.taille_cm = user.taille_cm
         current_user.objectif = user.objectif
 
-        return {"status": "succes", "message": "Profil mis à jour. ANALYSE LE RESTE DU MESSAGE : Veut-il une recette ?"}
+        return {"status": "succes", "message": f"Profil mis à jour (Objectif: {user.objectif}). Je recalcule les besoins..."}
 
     def TOOL_generate_planning():
         return pc.generate_weekly_plan(db, current_user.id_utilisateur, datetime.now())
@@ -96,43 +109,58 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
 
         return {"agenda_semaine": planning_data if planning_data else "Planning vide."}
 
-    def TOOL_search_recipes(query: str = None):
-        """Cherche par Nom OU par Tag."""
+    def TOOL_search_recipes(query: str = ""):
+        """
+        Si query est vide, on cherche juste par calories.
+        Si query est rempli, on cherche par mot clé/tag + calories.
+        """
+        # 1. Calcul des besoins caloriques pour un repas
         target_meal_calories = 600 
+        user_context = "Standard"
+        
         if all([current_user.poids_kg, current_user.taille_cm, current_user.age, current_user.sexe]):
              try:
                  bmr = calculate_bmr(current_user.poids_kg, current_user.taille_cm, current_user.age, current_user.sexe)
                  tdee = calculate_tdee(bmr, "sedentaire")
                  daily_target = calculate_target_calories(tdee, current_user.objectif or "maintien")
                  target_meal_calories = daily_target * 0.35
+                 user_context = f"Cible repas : ~{int(target_meal_calories)} kcal"
              except: pass
 
-        # La recherche regarde maintenant aussi dans les TAGS grâce à la modif dans recette_controller
-        candidates = rc.get_all_recettes(db, limit=50, search=query)
+        # 2. Récupération des candidats
+        candidates = rc.get_all_recettes(db, limit=100, search=query if query else None)
         
         if not candidates: 
             return {"resultat": "Aucune recette trouvée."}
 
+        # 3. Filtrage intelligent
         suitable = []
-        if not query:
-            for r in candidates:
-                cal = r.calories or 0
-                if (target_meal_calories - 300) <= cal <= (target_meal_calories + 300):
-                    suitable.append(r)
-            if not suitable: suitable = candidates[:10]
-        else:
-            suitable = candidates
+        min_cal = target_meal_calories - 200
+        max_cal = target_meal_calories + 200
+
+        for r in candidates:
+            cal = r.calories or 0
+            if min_cal <= cal <= max_cal:
+                suitable.append(r)
+        
+        if not suitable: suitable = candidates
 
         random.shuffle(suitable)
         selected = suitable[:3] 
 
         return {
-            "resultat": "Succès",
-            "recettes": [
-                {"id": r.id_recette, "original_name_en": r.nom_recette, "tags": r.tags, "calories": r.calories, "desc_en": r.description} 
+            "info_context": user_context,
+            "recettes_trouvees": [
+                {
+                    "id": r.id_recette, 
+                    "original_name_en": r.nom_recette, 
+                    "tags": r.tags, 
+                    "calories": r.calories, 
+                    "desc_en": r.description
+                } 
                 for r in selected
             ],
-            "conseil": "Traduis les titres en français."
+            "instruction": "Traduis les titres en français. Ne pose pas de question."
         }
 
     def TOOL_update_planning_entry(id_planning: int, new_recette_id: int):
@@ -170,28 +198,22 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
     }
 
     # =========================================================================
-    # SYSTEM PROMPT (AVEC LISTE DES TAGS)
+    # SYSTEM PROMPT
     # =========================================================================
     
     system_instruction = f"""
     Tu es FitBot, le coach expert NutriFit.
     
-    CONTEXTE DONNÉES :
-    - Langue utilisateur : FRANÇAIS.
-    - Base de données : ANGLAIS.
+    CONTEXTE TAGS DISPONIBLES : [{tags_context_str}]
     
-    🔥 INFO IMPORTANTE : Voici la liste des TAGS disponibles dans la base de recettes :
-    [{tags_context_str}]
+    RÈGLES CRITIQUES :
+    1. **TRADUCTION** : Traduis toujours les inputs utilisateur en Anglais pour la recherche, et les outputs recettes en Français.
     
-    UTILISATION DES TAGS :
-    - Si l'utilisateur dit "Je suis Vegan", utilise le tag exact "Vegan" dans `search_recipes(query="Vegan")`.
-    - Si l'utilisateur dit "Sans gluten", utilise "Gluten-Free".
-    - Si l'utilisateur dit "Un truc léger", cherche des tags comme "Low-Carb" ou "Low-Fat".
+    2. **ZÉRO FRICTION (IMPORTANT)** : 
+       - Si l'utilisateur dit juste "Donne une recette", "J'ai faim" : Appelle `search_recipes(query="")`.
+       - Si l'utilisateur donne un objectif (ex: "maigrir"), ACCEPTE-LE. **Ne demande jamais** "Quel est ton objectif de perte de poids ?". Considère que "maigrir" suffit.
     
-    RÈGLES :
-    1. Traduis toujours la recherche en Anglais.
-    2. Si tu identifies un besoin alimentaire, utilise un des tags de la liste ci-dessus.
-    3. Enchaîne les actions (Update profil -> Recherche -> Réponse).
+    3. **TAGS** : Utilise les tags SEULEMENT si l'utilisateur demande une spécificité (ex: "Vegan"). Sinon, laisse faire le hasard.
     """
 
     tools_schema = [
@@ -201,12 +223,12 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
         {"name": "get_week_planning", "description": "Lit planning.", "parameters": {"type": "OBJECT", "properties": {}}},
         {"name": "update_planning_entry", "description": "Modifie repas.", "parameters": {"type": "OBJECT", "properties": {"id_planning": {"type": "INTEGER"}, "new_recette_id": {"type": "INTEGER"}}, "required": ["id_planning", "new_recette_id"]}},
         {"name": "update_planning_seance", "description": "Modifie seance.", "parameters": {"type": "OBJECT", "properties": {"id_planning": {"type": "INTEGER"}, "new_seance_id": {"type": "INTEGER"}}, "required": ["id_planning", "new_seance_id"]}},
-        {"name": "search_recipes", "description": "Cherche recette (QUERY EN ANGLAIS ou TAG).", "parameters": {"type": "OBJECT", "properties": {"query": {"type": "STRING"}}}},
+        {"name": "search_recipes", "description": "Cherche recette. Laisser query VIDE pour une suggestion automatique.", "parameters": {"type": "OBJECT", "properties": {"query": {"type": "STRING"}}}},
         {"name": "get_catalog_exercises", "description": "Catalogue exos.", "parameters": {"type": "OBJECT", "properties": {}}},
         {"name": "get_exercises", "description": "Liste exos.", "parameters": {"type": "OBJECT", "properties": {}}}
     ]
 
-    model = genai.GenerativeModel(model_name="models/gemini-3-flash-preview", tools=tools_schema, system_instruction=system_instruction)
+    model = genai.GenerativeModel(model_name="models/gemini-2.5-flash-lite", tools=tools_schema, system_instruction=system_instruction)
     chat = model.start_chat(enable_automatic_function_calling=False)
 
     try:
@@ -242,7 +264,7 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
             
             return "Action effectuée."
 
-        return "J'ai mis à jour les informations, mais je n'ai pas pu finaliser toute la demande."
+        return "Trop d'actions."
 
     except Exception as e:
         print(f"❌ Erreur Chat : {e}")
