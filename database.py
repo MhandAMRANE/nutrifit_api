@@ -4,16 +4,10 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import certifi
-from urllib.parse import quote_plus  # <--- Indispensable pour la sécurité
+from urllib.parse import quote_plus  
 
-# 1. Charger les variables
+
 load_dotenv()
-
-print("--- DEBUG CONFIG ---")
-print(f"User: {os.getenv('DB_USER')}")
-print(f"Password: {os.getenv('DB_PASSWORD')}")
-print(f"Host: {os.getenv('DB_HOST')}")
-print("--------------------")
 
 
 DB_USER = os.getenv("DB_USER")
@@ -23,11 +17,8 @@ DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 DB_USE_SSL = os.getenv("DB_USE_SSL", "false").lower() == "true"
 
-# 2. Encoder le mot de passe (Sécurité)
-# Si le mot de passe contient des caractères spéciaux, cela évite le crash
 encoded_password = quote_plus(DB_PASSWORD)
 
-# 3. Construire l'URL
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 try:
