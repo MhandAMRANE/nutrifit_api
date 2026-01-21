@@ -1,45 +1,55 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 from models import Recette
+from schemas import RecetteCreate
 
-def get_all_recettes(db: Session, skip: int = 0, limit: int = 100, search: str = None):
-    query = db.query(Recette)
-    
-    if search:
-        # Recherche insensible à la casse dans le NOM ou les TAGS
-        search_fmt = f"%{search}%"
-        query = query.filter(
-            or_(
-                Recette.nom_recette.ilike(search_fmt),
-                Recette.tags.ilike(search_fmt)
-            )
-        )
-    
-    return query.offset(skip).limit(limit).all()
+import json
+
+def get_all_recettes(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(Recette).offset(skip).limit(limit).all()
 
 def get_recette_by_id(db: Session, recette_id: int):
     return db.query(Recette).filter(Recette.id_recette == recette_id).first()
 
-def get_available_tags(db: Session):
-    """
-    Récupère tous les tags uniques.
-    Format supporté : "Vegan, Gluten-Free, Low-Carb" (String simple séparée par virgules)
-    """
-    # On récupère toutes les lignes qui ont des tags
-    all_tags_rows = db.query(Recette.tags).filter(Recette.tags != None).all()
-    
-    unique_tags = set()
-    
-    for row in all_tags_rows:
-        if row.tags:
-            # 1. On découpe la chaine par les virgules
-            raw_tags = row.tags.split(',')
-            
-            # 2. On nettoie chaque tag (enlève les espaces autour) et on l'ajoute au set
-            for t in raw_tags:
-                clean_tag = t.strip()
-                if clean_tag: # Si le tag n'est pas vide
-                    unique_tags.add(clean_tag)
-            
-    # On retourne la liste triée alphabétiquement
-    return sorted(list(unique_tags))
+def create_recette(db: Session, recette: RecetteCreate):
+    recette_data = recette.model_dump()
+    # Serialize ingredients to JSON string
+    if 'ingredients' in recette_data:
+        recette_data['ingredients'] = json.dumps(recette_data['ingredients'])
+        
+    db_recette = Recette(**recette_data)
+    db.add(db_recette)
+    db.commit()
+    db.refresh(db_recette)
+    return db_recette
+
+def delete_recette(db: Session, recette_id: int):
+    db_recette = get_recette_by_id(db, recette_id)
+    if db_recette:
+        db.delete(db_recette)
+        db.commit()
+        return True
+    return False
+
+def update_recette(db: Session, recette_id: int, recette_data: RecetteCreate):
+    db_recette = get_recette_by_id(db, recette_id)
+    if db_recette:
+        # Met à jour les champs
+        db_recette.nom_recette = recette_data.nom_recette
+        db_recette.description = recette_data.description
+        db_recette.categorie = recette_data.categorie
+        db_recette.calories = recette_data.calories
+        db_recette.proteines = recette_data.proteines
+        db_recette.glucides = recette_data.glucides
+        db_recette.lipides = recette_data.lipides
+        
+        # Serialize ingredients
+        db_recette.ingredients = json.dumps([i.model_dump() for i in recette_data.ingredients])
+        
+        db_recette.tags = recette_data.tags
+        db_recette.image_url = recette_data.image_url
+        db_recette.cautions = recette_data.cautions
+        
+        db.commit()
+        db.refresh(db_recette)
+        return db_recette
+    return None

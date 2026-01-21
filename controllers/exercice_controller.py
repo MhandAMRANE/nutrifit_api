@@ -26,14 +26,16 @@ def delete_exercice(db: Session, exercice_id: int):
 def update_exercice(db: Session, exercice_id: int, exercice_data: ExerciceCreate):
     db_exercice = get_exercice_by_id(db, exercice_id)
     if db_exercice:
+
         db_exercice.nom_exercice = exercice_data.nom_exercice
         db_exercice.description_exercice = exercice_data.description_exercice
         db_exercice.type_exercice = exercice_data.type_exercice
         db_exercice.image_path = exercice_data.image_path
         db_exercice.muscle_cible = exercice_data.muscle_cible
         db_exercice.materiel = exercice_data.materiel
-        
+
         db.commit()
         db.refresh(db_exercice)
         return db_exercice
+
     return None
