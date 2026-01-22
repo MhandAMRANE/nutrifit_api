@@ -84,3 +84,43 @@ def login_user(email, mot_de_passe):
 
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
+
+
+def update_user_profile(db, current_user, user_update):
+    """
+    Met à jour les informations du profil utilisateur.
+    """
+    # On récupère l'instance attachée à la session actuelle
+    user_to_update = db.query(Utilisateur).filter(Utilisateur.id_utilisateur == current_user.id_utilisateur).first()
+    
+    if not user_to_update:
+        # Should not happen as current_user is validated
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+    if user_update.nom is not None:
+        user_to_update.nom = user_update.nom
+    if user_update.prenom is not None:
+        user_to_update.prenom = user_update.prenom
+
+    if user_update.sexe is not None:
+        user_to_update.sexe = user_update.sexe
+    if user_update.age is not None:
+        user_to_update.age = user_update.age
+    if user_update.poids_kg is not None:
+        user_to_update.poids_kg = user_update.poids_kg
+    if user_update.taille_cm is not None:
+        user_to_update.taille_cm = user_update.taille_cm
+    if user_update.regime_alimentaire is not None:
+        user_to_update.regime_alimentaire = user_update.regime_alimentaire
+    if user_update.objectif is not None:
+        user_to_update.objectif = user_update.objectif
+    if user_update.equipements is not None:
+        user_to_update.equipements = user_update.equipements
+    if user_update.nb_jours_entrainement is not None:
+        user_to_update.nb_jours_entrainement = user_update.nb_jours_entrainement
+    if user_update.path_pp is not None:
+        user_to_update.path_pp = user_update.path_pp
+
+    db.commit()
+    db.refresh(user_to_update)
+    return user_to_update

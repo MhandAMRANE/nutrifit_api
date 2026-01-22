@@ -12,7 +12,7 @@ import models
 import schemas
 import auth 
 
-from controllers.user_controller import signup_user, login_user, verify_code
+from controllers.user_controller import signup_user, login_user, verify_code, update_user_profile
 from controllers import recette_controller as rc
 from controllers import exercice_controller as ec
 from controllers import chat_controller as cc
@@ -30,6 +30,16 @@ from fastapi import FastAPI
 app = FastAPI(
     title="NutriFit API",
     root_path="/nutrifit-api",
+)
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 def get_db():
@@ -237,7 +247,7 @@ def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
 
 
 @app.put("/users/me", response_model=schemas.UserResponse)
-def update_user_profile(
+def update_my_profile(
     user_update: schemas.UserUpdate,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(auth.get_current_user),
