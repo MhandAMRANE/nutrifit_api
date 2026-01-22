@@ -466,7 +466,7 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
                 else:
                     res = {"erreur": "Outil inconnu"}
                 
-                print(f"✅ [API] Résultat : {str(res)[:150]}...") 
+                print(f"✅ [API] Résultat : {str(res)}") 
                 
                 response = chat.send_message(genai.protos.Part(function_response={"name": name, "response": res}))
                 continue

@@ -134,7 +134,7 @@ class PlanningRepasCreate(PlanningRepasBase):
 class PlanningRepas(PlanningRepasBase):
     id_planning_repas: int
     id_utilisateur: int
-    ddate_creation: Optional[datetime] = None
+    date_creation: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

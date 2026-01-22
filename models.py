@@ -62,35 +62,39 @@ class PlanningRepas(Base):
     heure_debut = Column(Time, nullable=True)
     notes = Column(Text, nullable=True)
 
-# --- CORRECTION 1 : PlanningSeance pointe vers une SÉANCE ---
 class PlanningSeance(Base):
     __tablename__ = "PlanningSeance"
     id_planning_seance = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
-    
-    # On remplace id_exercice par id_seance
     id_seance = Column(Integer, nullable=False, index=True) 
-    
     jour = Column(Date, nullable=False)
+    
+    # INDISPENSABLE : Il faut cette colonne pour cocher la séance
+    # Si elle n'est pas dans votre BDD, lancez le script SQL ci-dessous
     est_realise = Column(Boolean, default=False)
+    
+    # Vous avez dit avoir 'date_creation' dans PlanningSeance, on le garde donc ici
     date_creation = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
+    
+    # SUPPRIMÉS DU MODÈLE : ordre, series, repetitions, poids_kg, repos_secondes
 
 class Seance(Base):
     __tablename__ = "Seance"
     id_seance = Column(Integer, primary_key=True, index=True)
-    id_utilisateur = Column(Integer, nullable=False, index=True)
-    nom_seance = Column(String(100), nullable=False)
-    description = Column(Text, nullable=True)
-    duree_minutes = Column(Integer, nullable=True)
-    date_creation = Column(DateTime, default=datetime.utcnow)
+    id_calendrier = Column(Integer, nullable=True)
+    
+    # STRICTEMENT VOS COLONNES
+    nom = Column(String(100), nullable=False)
+    duree = Column(Integer, nullable=True)
 
-# --- CORRECTION 2 : Ajout de la table de liaison manquante ---
 class SeanceExercice(Base):
     __tablename__ = "SeanceExercice"
     id = Column(Integer, primary_key=True, index=True)
     id_seance = Column(Integer, nullable=False, index=True)
     id_exercice = Column(Integer, nullable=False, index=True)
+    
+    # C'est ICI que sont les infos techniques
     ordre = Column(Integer, default=1)
     series = Column(Integer, default=4)
     repetitions = Column(Integer, default=12)
