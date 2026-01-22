@@ -56,7 +56,7 @@ class PlanningRepas(Base):
     id_planning_repas = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
     id_recette = Column(Integer, nullable=False, index=True)
-    jour = Column(Date, nullable=False)
+    jour = Column(String(20), nullable=False)
     repas = Column(String(20), nullable=False) 
     date_creation = Column(DateTime, default=datetime.utcnow)
     heure_debut = Column(Time, nullable=True)

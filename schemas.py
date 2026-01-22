@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from typing import Optional, List, Union
 from datetime import date
 import json
-from datetime import datetime
+from datetime import datetime, time
 
 # --- Schémas pour les Utilisateurs ---
 
@@ -127,6 +127,7 @@ class PlanningRepasBase(BaseModel):
     jour: str  # Format: 2026-01-22
     repas: str  # petit-dej, dejeuner, diner, collation
     notes: Optional[str] = None
+    heure_debut: Optional[time] = None
 
 class PlanningRepasCreate(PlanningRepasBase):
     pass
@@ -140,14 +141,10 @@ class PlanningRepas(PlanningRepasBase):
 
 
 class PlanningSeanceBase(BaseModel):
-    id_exercice: int
+    id_seance: int
     jour: str  # Format: 2026-01-22
-    ordre: Optional[int] = None
-    series: Optional[int] = None
-    repetitions: Optional[int] = None
-    poids_kg: Optional[float] = None
-    repos_secondes: Optional[int] = None
     notes: Optional[str] = None
+    est_realise: Optional[bool] = False
 
 class PlanningSeanceCreate(PlanningSeanceBase):
     pass

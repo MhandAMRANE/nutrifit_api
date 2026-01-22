@@ -288,7 +288,7 @@ def update_my_profile(
 
 # ============ ROUTES CALENDRIER ============
 
-@app.get("/calendar")
+@app.get("/calendar", response_model=schemas.Calendar)
 def get_user_calendar(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(auth.get_current_user)
@@ -304,7 +304,7 @@ def get_user_calendar(
     }
 
 
-@app.get("/calendar/{jour}")
+@app.get("/calendar/{jour}", response_model=schemas.CalendarDay)
 def get_calendar_day(
     jour: str,
     db: Session = Depends(get_db),
@@ -345,14 +345,10 @@ def create_workout_planning(
     """
     Ajoute une séance d'entraînement au calendrier.
     Paramètres:
-    - id_exercice: ID de l'exercice
+    - id_seance: ID de la séance
     - jour: lundi, mardi, etc.
-    - ordre: ordre d'exécution (optionnel)
-    - series: nombre de séries (optionnel)
-    - repetitions: nombre de répétitions (optionnel)
-    - poids_kg: poids utilisé (optionnel)
-    - repos_secondes: temps de repos (optionnel)
     - notes: (optionnel)
+    - est_realise: (optionnel, defaut False)
     """
     new_workout = cal_c.add_workout_to_calendar(db, current_user.id_utilisateur, workout)
     return new_workout
@@ -378,14 +374,8 @@ def update_meal_planning(
     if not db_meal:
         raise HTTPException(status_code=404, detail="Repas non trouvé")
     
-    # Convertir jour en date
-    try:
-        jour_date = dt.strptime(meal_update.jour, "%Y-%m-%d").date()
-    except (ValueError, AttributeError):
-        jour_date = meal_update.jour
-    
     db_meal.id_recette = meal_update.id_recette
-    db_meal.jour = jour_date
+    db_meal.jour = meal_update.jour
     db_meal.repas = meal_update.repas
     db_meal.notes = meal_update.notes
     
@@ -414,20 +404,10 @@ def update_workout_planning(
     if not db_workout:
         raise HTTPException(status_code=404, detail="Séance non trouvée")
     
-    # Convertir jour en date
-    try:
-        jour_date = dt.strptime(workout_update.jour, "%Y-%m-%d").date()
-    except (ValueError, AttributeError):
-        jour_date = workout_update.jour
-    
-    db_workout.id_exercice = workout_update.id_exercice
-    db_workout.jour = jour_date
-    db_workout.ordre = workout_update.ordre
-    db_workout.series = workout_update.series
-    db_workout.repetitions = workout_update.repetitions
-    db_workout.poids_kg = workout_update.poids_kg
-    db_workout.repos_secondes = workout_update.repos_secondes
+    db_workout.id_seance = workout_update.id_seance
+    db_workout.jour = workout_update.jour
     db_workout.notes = workout_update.notes
+    db_workout.est_realise = workout_update.est_realise
     
     db.commit()
     db.refresh(db_workout)
