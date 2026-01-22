@@ -12,7 +12,7 @@ import models
 import schemas
 import auth 
 
-from controllers.user_controller import signup_user, login_user, verify_code
+from controllers.user_controller import signup_user, login_user, verify_code, update_user_profile
 from controllers import recette_controller as rc
 from controllers import exercice_controller as ec
 from controllers import chat_controller as cc
@@ -30,6 +30,16 @@ from fastapi import FastAPI
 app = FastAPI(
     title="NutriFit API",
     root_path="/nutrifit-api",
+)
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 def get_db():
@@ -237,7 +247,7 @@ def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
 
 
 @app.put("/users/me", response_model=schemas.UserResponse)
-def update_user_profile(
+def update_my_profile(
     user_update: schemas.UserUpdate,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(auth.get_current_user),
@@ -246,38 +256,11 @@ def update_user_profile(
     Met à jour les infos de profil de l'utilisateur connecté.
     Les champs sont tous optionnels.
     """
-    if user_update.nom is not None:
-        current_user.nom = user_update.nom
-    if user_update.prenom is not None:
-        current_user.prenom = user_update.prenom
-
-    if user_update.sexe is not None:
-        current_user.sexe = user_update.sexe
-    if user_update.age is not None:
-        current_user.age = user_update.age
-    if user_update.poids_kg is not None:
-        current_user.poids_kg = user_update.poids_kg
-    if user_update.taille_cm is not None:
-        current_user.taille_cm = user_update.taille_cm
-    if user_update.regime_alimentaire is not None:
-        current_user.regime_alimentaire = user_update.regime_alimentaire
-    if user_update.objectif is not None:
-        current_user.objectif = user_update.objectif
-    if user_update.equipements is not None:
-        current_user.equipements = user_update.equipements
-    if user_update.nb_jours_entrainement is not None:
-        current_user.nb_jours_entrainement = user_update.nb_jours_entrainement
-    if user_update.path_pp is not None:
-        current_user.path_pp = user_update.path_pp
-
-<<<<<<< HEAD
-    db.commit()
-    db.refresh(current_user)
-    return current_user
-=======
-        db.commit()
-        db.refresh(current_user)
-        return current_user
+    try:
+        return update_user_profile(db, current_user, user_update)
+    except Exception as e:
+        logger.exception("Erreur update_user_profile")
+        raise HTTPException(status_code=500, detail=f"Erreur interne : {str(e)}")
 
 
 # ============ ROUTES CALENDRIER ============

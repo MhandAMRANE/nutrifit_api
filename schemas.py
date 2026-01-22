@@ -43,6 +43,20 @@ class UserUpdate(BaseModel):
     nb_jours_entrainement: Optional[int] = None
     path_pp: Optional[str] = None
 
+    @field_validator('age')
+    @classmethod
+    def validate_age(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("L'âge doit être positif")
+        return v
+
+    @field_validator('poids_kg')
+    @classmethod
+    def validate_poids(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("Le poids doit être positif")
+        return v
+
 
 # --- Schémas pour les Recettes ---
 
