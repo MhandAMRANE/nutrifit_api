@@ -456,4 +456,3 @@ def delete_workout_planning(
     if not success:
         raise HTTPException(status_code=404, detail="Séance non trouvée")
     return None
->>>>>>> 1657eacbf9d00a645ac2d708ab50397f19668f4e
