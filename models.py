@@ -56,7 +56,7 @@ class PlanningRepas(Base):
     id_planning_repas = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
     id_recette = Column(Integer, nullable=False, index=True)
-    jour = Column(Date, nullable=False)
+    jour = Column(String(20), nullable=False)
     repas = Column(String(20), nullable=False) 
     date_creation = Column(DateTime, default=datetime.utcnow)
     heure_debut = Column(Time, nullable=True)
@@ -71,7 +71,7 @@ class PlanningSeance(Base):
     # On remplace id_exercice par id_seance
     id_seance = Column(Integer, nullable=False, index=True) 
     
-    jour = Column(Date, nullable=False)
+    jour = Column(String(20), nullable=False)
     est_realise = Column(Boolean, default=False)
     date_creation = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
@@ -95,3 +95,8 @@ class SeanceExercice(Base):
     series = Column(Integer, default=4)
     repetitions = Column(Integer, default=12)
     temps_recuperation = Column(Integer, default=60)
+
+class Favoris(Base):
+    __tablename__ = "Favoris"
+    id_utilisateur = Column(Integer, ForeignKey('Utilisateur.id_utilisateur'), primary_key=True)
+    id_recette = Column(Integer, ForeignKey('Recette.id_recette'), primary_key=True)
