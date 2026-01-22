@@ -53,3 +53,20 @@ def update_recette(db: Session, recette_id: int, recette_data: RecetteCreate):
         db.refresh(db_recette)
         return db_recette
     return None
+
+def get_available_tags(db: Session):
+    """Récupère la liste unique des tags présents dans la base."""
+    # On récupère tous les champs 'tags' non nuls
+    results = db.query(Recette.tags).filter(Recette.tags != None).all()
+    
+    unique_tags = set()
+    for row in results:
+        tags_str = row[0] # row est un tuple (ex: "Vegan, Facile",)
+        if tags_str:
+            # On découpe par virgule et on nettoie les espaces
+            for t in tags_str.split(','):
+                clean = t.strip()
+                if clean:
+                    unique_tags.add(clean)
+    
+    return list(unique_tags)
