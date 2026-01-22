@@ -174,3 +174,17 @@ class Calendar(BaseModel):
     seances: List[PlanningSeance] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Schémas pour les Favoris ---
+
+class FavoriteBase(BaseModel):
+    id_recette: int
+
+class FavoriteCreate(FavoriteBase):
+    pass
+
+class FavoriteResponse(FavoriteBase):
+    id_utilisateur: int
+
+    model_config = ConfigDict(from_attributes=True)

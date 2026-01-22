@@ -17,6 +17,7 @@ from controllers import recette_controller as rc
 from controllers import exercice_controller as ec
 from controllers import chat_controller as cc
 from controllers import calendar_controller as cal_c
+from controllers import favoris_controller as fc
 
 try:
     Base.metadata.create_all(bind=engine)
@@ -461,3 +462,45 @@ def delete_workout_planning(
     if not success:
         raise HTTPException(status_code=404, detail="Séance non trouvée")
     return None
+
+
+# ============ ROUTES FAVORIS ============
+
+@app.post("/favorites/{recette_id}", response_model=schemas.FavoriteResponse, status_code=status.HTTP_201_CREATED)
+def add_favorite(
+    recette_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Ajoute une recette aux favoris de l'utilisateur connecté.
+    """
+    fav = fc.add_favorite(db, current_user.id_utilisateur, recette_id)
+    if not fav:
+        raise HTTPException(status_code=404, detail="Recette non trouvée")
+    return fav
+
+@app.delete("/favorites/{recette_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_favorite(
+    recette_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Supprime une recette des favoris de l'utilisateur connecté.
+    """
+    success = fc.remove_favorite(db, current_user.id_utilisateur, recette_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Favori non trouvé")
+    return None
+
+@app.get("/favorites", response_model=List[schemas.Recette])
+def get_user_favorites(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Récupère toutes les recettes favorites de l'utilisateur connecté.
+    """
+    return fc.get_user_favorites(db, current_user.id_utilisateur)
+

@@ -95,3 +95,8 @@ class SeanceExercice(Base):
     series = Column(Integer, default=4)
     repetitions = Column(Integer, default=12)
     temps_recuperation = Column(Integer, default=60)
+
+class Favoris(Base):
+    __tablename__ = "Favoris"
+    id_utilisateur = Column(Integer, ForeignKey('Utilisateur.id_utilisateur'), primary_key=True)
+    id_recette = Column(Integer, ForeignKey('Recette.id_recette'), primary_key=True)
