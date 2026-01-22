@@ -7,7 +7,8 @@ import logging
 
 
 from database import Base, engine, SessionLocal
-from models import Utilisateur, Recette
+from models import Utilisateur, Recette, PlanningRepas, PlanningSeance
+import models
 import schemas
 import auth 
 
@@ -15,8 +16,12 @@ from controllers.user_controller import signup_user, login_user, verify_code
 from controllers import recette_controller as rc
 from controllers import exercice_controller as ec
 from controllers import chat_controller as cc
+from controllers import calendar_controller as cal_c
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"⚠️ Erreur lors de la création des tables (vérifier la connexion BDD) : {e}")
 
 logger = logging.getLogger(__name__)
 
@@ -208,14 +213,7 @@ def delete_exercice(
 
 
     
-    from auth import get_current_user
 
-    @app.get("/users/me", response_model=schemas.UserResponse)
-    def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
-        """
-        Retourne le profil complet de l'utilisateur connecté.
-        """
-        return current_user
 @app.post("/chat", response_model=ChatResponse)
 def chat_with_coach(
     request: ChatRequest,
@@ -238,40 +236,224 @@ def read_users_me(current_user: Utilisateur = Depends(auth.get_current_user)):
     return current_user
 
 
-    @app.put("/users/me", response_model=schemas.UserResponse)
-    def update_user_profile(
-        user_update: schemas.UserUpdate,
-        db: Session = Depends(get_db),
-        current_user: Utilisateur = Depends(auth.get_current_user),
-    ):
-        """
-        Met à jour les infos de profil de l'utilisateur connecté.
-        Les champs sont tous optionnels.
-        """
-        if user_update.nom is not None:
-            current_user.nom = user_update.nom
-        if user_update.prenom is not None:
-            current_user.prenom = user_update.prenom
+@app.put("/users/me", response_model=schemas.UserResponse)
+def update_user_profile(
+    user_update: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user),
+):
+    """
+    Met à jour les infos de profil de l'utilisateur connecté.
+    Les champs sont tous optionnels.
+    """
+    if user_update.nom is not None:
+        current_user.nom = user_update.nom
+    if user_update.prenom is not None:
+        current_user.prenom = user_update.prenom
 
-        if user_update.sexe is not None:
-            current_user.sexe = user_update.sexe
-        if user_update.age is not None:
-            current_user.age = user_update.age
-        if user_update.poids_kg is not None:
-            current_user.poids_kg = user_update.poids_kg
-        if user_update.taille_cm is not None:
-            current_user.taille_cm = user_update.taille_cm
-        if user_update.regime_alimentaire is not None:
-            current_user.regime_alimentaire = user_update.regime_alimentaire
-        if user_update.objectif is not None:
-            current_user.objectif = user_update.objectif
-        if user_update.equipements is not None:
-            current_user.equipements = user_update.equipements
-        if user_update.nb_jours_entrainement is not None:
-            current_user.nb_jours_entrainement = user_update.nb_jours_entrainement
-        if user_update.path_pp is not None:
-            current_user.path_pp = user_update.path_pp
+    if user_update.sexe is not None:
+        current_user.sexe = user_update.sexe
+    if user_update.age is not None:
+        current_user.age = user_update.age
+    if user_update.poids_kg is not None:
+        current_user.poids_kg = user_update.poids_kg
+    if user_update.taille_cm is not None:
+        current_user.taille_cm = user_update.taille_cm
+    if user_update.regime_alimentaire is not None:
+        current_user.regime_alimentaire = user_update.regime_alimentaire
+    if user_update.objectif is not None:
+        current_user.objectif = user_update.objectif
+    if user_update.equipements is not None:
+        current_user.equipements = user_update.equipements
+    if user_update.nb_jours_entrainement is not None:
+        current_user.nb_jours_entrainement = user_update.nb_jours_entrainement
+    if user_update.path_pp is not None:
+        current_user.path_pp = user_update.path_pp
 
+<<<<<<< HEAD
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+=======
         db.commit()
         db.refresh(current_user)
         return current_user
+
+
+# ============ ROUTES CALENDRIER ============
+
+@app.get("/calendar")
+def get_user_calendar(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Récupère le calendrier complet (repas + séances) de l'utilisateur.
+    """
+    calendar_data = cal_c.get_user_calendar(db, current_user.id_utilisateur)
+    return {
+        "id_utilisateur": current_user.id_utilisateur,
+        "repas": calendar_data["repas"],
+        "seances": calendar_data["seances"]
+    }
+
+
+@app.get("/calendar/{jour}")
+def get_calendar_day(
+    jour: str,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Récupère les repas et séances pour un jour spécifique.
+    Jour format: 2026-01-22
+    """
+    calendar_day = cal_c.get_calendar_by_day(db, current_user.id_utilisateur, jour)
+    return calendar_day
+
+
+@app.post("/calendar/meal", response_model=schemas.PlanningRepas, status_code=status.HTTP_201_CREATED)
+def create_meal_planning(
+    meal: schemas.PlanningRepasCreate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Ajoute un repas au calendrier.
+    Paramètres:
+    - id_recette: ID de la recette
+    - jour: lundi, mardi, etc.
+    - repas: petit-dej, dejeuner, diner, collation
+    - notes: (optionnel)
+    """
+    new_meal = cal_c.add_meal_to_calendar(db, current_user.id_utilisateur, meal)
+    return new_meal
+
+
+@app.post("/calendar/workout", response_model=schemas.PlanningSeance, status_code=status.HTTP_201_CREATED)
+def create_workout_planning(
+    workout: schemas.PlanningSeanceCreate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Ajoute une séance d'entraînement au calendrier.
+    Paramètres:
+    - id_exercice: ID de l'exercice
+    - jour: lundi, mardi, etc.
+    - ordre: ordre d'exécution (optionnel)
+    - series: nombre de séries (optionnel)
+    - repetitions: nombre de répétitions (optionnel)
+    - poids_kg: poids utilisé (optionnel)
+    - repos_secondes: temps de repos (optionnel)
+    - notes: (optionnel)
+    """
+    new_workout = cal_c.add_workout_to_calendar(db, current_user.id_utilisateur, workout)
+    return new_workout
+
+
+@app.put("/calendar/meal/{planning_id}", response_model=schemas.PlanningRepas)
+def update_meal_planning(
+    planning_id: int,
+    meal_update: schemas.PlanningRepasCreate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Met à jour un repas du calendrier.
+    """
+    from datetime import datetime as dt
+    
+    db_meal = db.query(models.PlanningRepas).filter(
+        models.PlanningRepas.id_planning_repas == planning_id,
+        models.PlanningRepas.id_utilisateur == current_user.id_utilisateur
+    ).first()
+    
+    if not db_meal:
+        raise HTTPException(status_code=404, detail="Repas non trouvé")
+    
+    # Convertir jour en date
+    try:
+        jour_date = dt.strptime(meal_update.jour, "%Y-%m-%d").date()
+    except (ValueError, AttributeError):
+        jour_date = meal_update.jour
+    
+    db_meal.id_recette = meal_update.id_recette
+    db_meal.jour = jour_date
+    db_meal.repas = meal_update.repas
+    db_meal.notes = meal_update.notes
+    
+    db.commit()
+    db.refresh(db_meal)
+    return db_meal
+
+
+@app.put("/calendar/workout/{planning_id}", response_model=schemas.PlanningSeance)
+def update_workout_planning(
+    planning_id: int,
+    workout_update: schemas.PlanningSeanceCreate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Met à jour une séance du calendrier.
+    """
+    from datetime import datetime as dt
+    
+    db_workout = db.query(models.PlanningSeance).filter(
+        models.PlanningSeance.id_planning_seance == planning_id,
+        models.PlanningSeance.id_utilisateur == current_user.id_utilisateur
+    ).first()
+    
+    if not db_workout:
+        raise HTTPException(status_code=404, detail="Séance non trouvée")
+    
+    # Convertir jour en date
+    try:
+        jour_date = dt.strptime(workout_update.jour, "%Y-%m-%d").date()
+    except (ValueError, AttributeError):
+        jour_date = workout_update.jour
+    
+    db_workout.id_exercice = workout_update.id_exercice
+    db_workout.jour = jour_date
+    db_workout.ordre = workout_update.ordre
+    db_workout.series = workout_update.series
+    db_workout.repetitions = workout_update.repetitions
+    db_workout.poids_kg = workout_update.poids_kg
+    db_workout.repos_secondes = workout_update.repos_secondes
+    db_workout.notes = workout_update.notes
+    
+    db.commit()
+    db.refresh(db_workout)
+    return db_workout
+
+
+@app.delete("/calendar/meal/{planning_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_meal_planning(
+    planning_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Supprime un repas du calendrier.
+    """
+    success = cal_c.remove_meal_from_calendar(db, planning_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Repas non trouvé")
+    return None
+
+
+@app.delete("/calendar/workout/{planning_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_workout_planning(
+    planning_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """
+    Supprime une séance du calendrier.
+    """
+    success = cal_c.remove_workout_from_calendar(db, planning_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Séance non trouvée")
+    return None
+>>>>>>> 1657eacbf9d00a645ac2d708ab50397f19668f4e

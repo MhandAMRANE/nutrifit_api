@@ -407,6 +407,10 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
         {"name": "create_custom_workout","description": "Génère une séance de sport unique et immédiate.","parameters": {"type": "OBJECT","properties": {"duration_min": {"type": "INTEGER", "description": "Durée en minutes (ex: 30, 60)."},"intensity": {"type": "STRING", "description": "'low' (fatigué), 'medium', 'high' (en forme)."},"focus": {"type": "STRING", "description": "'full_body', 'legs', 'upper', 'abs', 'cardio'."},"material": {"type": "STRING", "description": "'poids_du_corps', 'materiel_maison', 'salle_de_sport'."}}}}
     ]
 
+
+
+
+
     model = genai.GenerativeModel(model_name="models/gemini-2.5-flash-lite", tools=tools_schema, system_instruction=system_instruction)
     chat = model.start_chat(enable_automatic_function_calling=False)
 

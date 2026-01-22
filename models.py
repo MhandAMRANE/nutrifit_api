@@ -7,7 +7,8 @@ from sqlalchemy import (
     Enum,
     Float,
     SmallInteger,
-    Text
+    Text,
+    Date
 )
 from sqlalchemy.dialects.mysql import TINYINT
 from datetime import datetime
@@ -74,7 +75,7 @@ class PlanningRepas(Base):
     id_planning_repas = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
     id_recette = Column(Integer, nullable=False, index=True)
-    jour = Column(String(20), nullable=False)  # lundi, mardi, etc.
+    jour = Column(Date, nullable=False)  # Format: 2026-01-22
     repas = Column(String(20), nullable=False)  # petit-dej, dejeuner, diner, collation
     date_creation = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
@@ -86,8 +87,8 @@ class PlanningSeance(Base):
     id_planning_seance = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
     id_exercice = Column(Integer, nullable=False, index=True)
-    jour = Column(String(20), nullable=False)  # lundi, mardi, etc.
-    ordre = Column(Integer, nullable=True)  # ordre d'exécution
+    jour = Column(Date, nullable=False)  # Format: 2026-01-22
+    ordre = Column(Integer, nullable=True)
     series = Column(Integer, nullable=True)
     repetitions = Column(Integer, nullable=True)
     poids_kg = Column(Float, nullable=True)
