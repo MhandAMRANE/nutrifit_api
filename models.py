@@ -1,23 +1,12 @@
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    DateTime,
-    Enum,
-    Float,
-    SmallInteger,
-    Text,
-    Date
+    Column, Integer, String, Boolean, DateTime, Enum, Float, SmallInteger, Text, Date, Time, ForeignKey
 )
 from sqlalchemy.dialects.mysql import TINYINT
 from datetime import datetime
 from database import Base
 
-
 class Utilisateur(Base):
     __tablename__ = "Utilisateur"
-
     id_utilisateur = Column(Integer, primary_key=True, index=True)
     nom = Column(String(100))
     prenom = Column(String(100))
@@ -27,7 +16,6 @@ class Utilisateur(Base):
     token_verification = Column(String(255))
     token_expiration = Column(DateTime)
     type_utilisateur = Column(String(50), default='client')
-
     sexe = Column(Enum("masculin", "feminin", name="sexe_enum"), nullable=True)
     age = Column(TINYINT(unsigned=True), nullable=True)
     poids_kg = Column(Float, nullable=True)
@@ -40,18 +28,14 @@ class Utilisateur(Base):
 
 class Recette(Base):
     __tablename__ = "Recette"
-
     id_recette = Column(Integer, primary_key=True, index=True)
     nom_recette = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     categorie = Column(String(50), nullable=True)
-    
-    # Valeurs nutritionnelles
     calories = Column(Integer, nullable=True, default=0)
     proteines = Column(Float, nullable=True)
     glucides = Column(Float, nullable=True)
     lipides = Column(Float, nullable=True)
-    
     ingredients = Column(Text, nullable=False) 
     tags = Column(Text, nullable=True)
     image_url = Column(String(255), nullable=True)
@@ -59,51 +43,55 @@ class Recette(Base):
 
 class Exercice(Base):
     __tablename__ = "Exercice"
-
     id_exercice = Column(Integer, primary_key=True, index=True)
     nom_exercice = Column(String(100), nullable=False)
     description_exercice = Column(Text, nullable=True)
     type_exercice = Column(String(50), nullable=True)
     image_path = Column(String(255), nullable=True)
-    muscle_cible = Column(Text, nullable=True) # JSON stored as Text
+    muscle_cible = Column(Text, nullable=True)
     materiel = Column(Enum('poids_du_corps','materiel_maison','salle_de_sport'), default='poids_du_corps')
-
 
 class PlanningRepas(Base):
     __tablename__ = "PlanningRepas"
-
     id_planning_repas = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
     id_recette = Column(Integer, nullable=False, index=True)
-    jour = Column(Date, nullable=False)  # Format: 2026-01-22
-    repas = Column(String(20), nullable=False)  # petit-dej, dejeuner, diner, collation
+    jour = Column(Date, nullable=False)
+    repas = Column(String(20), nullable=False) 
     date_creation = Column(DateTime, default=datetime.utcnow)
+    heure_debut = Column(Time, nullable=True)
     notes = Column(Text, nullable=True)
 
-
+# --- CORRECTION 1 : PlanningSeance pointe vers une SÉANCE ---
 class PlanningSeance(Base):
     __tablename__ = "PlanningSeance"
-
     id_planning_seance = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
-    id_exercice = Column(Integer, nullable=False, index=True)
-    jour = Column(Date, nullable=False)  # Format: 2026-01-22
-    ordre = Column(Integer, nullable=True)
-    series = Column(Integer, nullable=True)
-    repetitions = Column(Integer, nullable=True)
-    poids_kg = Column(Float, nullable=True)
-    repos_secondes = Column(Integer, nullable=True)
+    
+    # On remplace id_exercice par id_seance
+    id_seance = Column(Integer, nullable=False, index=True) 
+    
+    jour = Column(Date, nullable=False)
+    est_realise = Column(Boolean, default=False)
     date_creation = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
-
 
 class Seance(Base):
     __tablename__ = "Seance"
-
     id_seance = Column(Integer, primary_key=True, index=True)
     id_utilisateur = Column(Integer, nullable=False, index=True)
     nom_seance = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     duree_minutes = Column(Integer, nullable=True)
     date_creation = Column(DateTime, default=datetime.utcnow)
-    exercices = Column(Text, nullable=True)  # JSON stored as Text
+
+# --- CORRECTION 2 : Ajout de la table de liaison manquante ---
+class SeanceExercice(Base):
+    __tablename__ = "SeanceExercice"
+    id = Column(Integer, primary_key=True, index=True)
+    id_seance = Column(Integer, nullable=False, index=True)
+    id_exercice = Column(Integer, nullable=False, index=True)
+    ordre = Column(Integer, default=1)
+    series = Column(Integer, default=4)
+    repetitions = Column(Integer, default=12)
+    temps_recuperation = Column(Integer, default=60)

@@ -349,13 +349,19 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
     3. **SILENCE RADIO** : Ne dis JAMAIS "Je cherche...", "Un instant...", "Laisse-moi regarder". Agis silencieusement et n'affiche QUE le résultat final utile.
 
     ===========================================================================
-    🥗 **INTELLIGENCE NUTRITION (RECETTES)**
+    🥗 **INTELLIGENCE NUTRITION (RECETTES & CONSEILS)**
     ===========================================================================
-    - **Demande vague** ("J'ai faim", "Recette soir") -> Appelle `search_recipes(query="")`. L'algo choisira selon les calories.
-    - **Demande précise** ("Recette poulet") -> Appelle `search_recipes(query="chicken")`. (Traduis toujours en Anglais pour la recherche).
+    1. **CONSEILS & ANALYSE (Priorité si question)** :
+       - Si l'utilisateur demande un avis ("C'est trop 700kcal ?", "Je mange quoi avant le sport ?"), **NE CHERCHE PAS DE RECETTE**.
+       - Réponds en utilisant ton expertise et les données de la "Carte d'Identité" (Cible journalière, Objectif).
+       - Ex: "700 kcal c'est environ 35%% de votre cible (2000), c'est un gros repas mais acceptable si..."
     
-    **FORMAT DE RÉPONSE OBLIGATOIRE :**
-    Affiche directement la/les recettes trouvées sous cette forme :
+    2. **RECHERCHE DE RECETTES (Seulement si demandé)** :
+       - Si demande explicite de plat/repas ("J'ai faim", "Idée repas", "recette poulet") -> Appelle `search_recipes`.
+       - **Demande vague** -> Appelle `search_recipes(query="")`.
+       - **Demande précise** -> Appelle `search_recipes(query="anglais")`.
+
+    **FORMAT DE RÉPONSE RECETTES (Uniquement pour search_recipes) :**
     "🍽️ **[Nom de la recette en Français]** (~[Calories] kcal)
     [Une phrase courte et appétissante qui décrit le plat]. [Mention spéciale SI régime spécifique, ex: "100% Vegan"]."
     *(Ne liste PAS les tags techniques type "sans arachide, sans soja" sauf si c'est pertinent pour le profil).*
@@ -411,7 +417,20 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
 
 
 
-    model = genai.GenerativeModel(model_name="models/gemini-2.5-flash-lite", tools=tools_schema, system_instruction=system_instruction)
+    # Configuration de la sécurité pour éviter les blocages injustifiés
+    safety_settings = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
+
+    model = genai.GenerativeModel(
+        model_name="models/gemini-2.5-flash", 
+        tools=tools_schema, 
+        system_instruction=system_instruction,
+        safety_settings=safety_settings
+    )
     chat = model.start_chat(enable_automatic_function_calling=False)
 
     try:
@@ -420,6 +439,16 @@ def handle_chat_interaction(user_message: str, db: Session, current_user: Utilis
         for _ in range(5):
             if not response.candidates: return "Erreur API."
             
+            # Protection contre les réponses vides (bug connu Gemini ou Filtre de sécurité)
+            if not response.candidates[0].content.parts:
+                print(f"⚠️ [IA] Réponse vide reçue. Debug Candidate: {response.candidates[0]}")
+                
+                # Si bloqué par la sécurité, on le dit
+                if response.candidates[0].finish_reason == 3: # 3 = SAFETY
+                    return "Je ne peux pas répondre pour des raisons de sécurité (filtre déclenché)."
+                
+                return "Je n'ai pas réussi à formuler une réponse (Réponse vide du modèle)."
+
             part = response.candidates[0].content.parts[0]
             
             if part.function_call:

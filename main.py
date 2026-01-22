@@ -270,14 +270,9 @@ def update_user_profile(
     if user_update.path_pp is not None:
         current_user.path_pp = user_update.path_pp
 
-<<<<<<< HEAD
     db.commit()
     db.refresh(current_user)
     return current_user
-=======
-        db.commit()
-        db.refresh(current_user)
-        return current_user
 
 
 # ============ ROUTES CALENDRIER ============

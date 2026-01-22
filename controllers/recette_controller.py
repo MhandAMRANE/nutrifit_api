@@ -1,11 +1,29 @@
 from sqlalchemy.orm import Session
 from models import Recette
 from schemas import RecetteCreate
-
+from sqlalchemy import or_
 import json
 
-def get_all_recettes(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Recette).offset(skip).limit(limit).all()
+def get_all_recettes(db: Session, skip: int = 0, limit: int = 100, search: str = None):
+    """
+    Récupère les recettes, avec une option de recherche textuelle.
+    """
+    query = db.query(Recette)
+    
+    # Si un terme de recherche est fourni, on filtre
+    if search:
+        # On cherche dans le nom OU la description OU les ingrédients
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Recette.nom_recette.ilike(search_term),
+                Recette.description.ilike(search_term),
+                Recette.ingredients.ilike(search_term),
+                Recette.tags.ilike(search_term)
+            )
+        )
+    
+    return query.offset(skip).limit(limit).all()
 
 def get_recette_by_id(db: Session, recette_id: int):
     return db.query(Recette).filter(Recette.id_recette == recette_id).first()
