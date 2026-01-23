@@ -257,33 +257,14 @@ def update_my_profile(
     Met à jour les infos de profil de l'utilisateur connecté.
     Les champs sont tous optionnels.
     """
-    if user_update.nom is not None:
-        current_user.nom = user_update.nom
-    if user_update.prenom is not None:
-        current_user.prenom = user_update.prenom
-
-    if user_update.sexe is not None:
-        current_user.sexe = user_update.sexe
-    if user_update.age is not None:
-        current_user.age = user_update.age
-    if user_update.poids_kg is not None:
-        current_user.poids_kg = user_update.poids_kg
-    if user_update.taille_cm is not None:
-        current_user.taille_cm = user_update.taille_cm
-    if user_update.regime_alimentaire is not None:
-        current_user.regime_alimentaire = user_update.regime_alimentaire
-    if user_update.objectif is not None:
-        current_user.objectif = user_update.objectif
-    if user_update.equipements is not None:
-        current_user.equipements = user_update.equipements
-    if user_update.nb_jours_entrainement is not None:
-        current_user.nb_jours_entrainement = user_update.nb_jours_entrainement
-    if user_update.path_pp is not None:
-        current_user.path_pp = user_update.path_pp
-
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    try:
+        updated_user = update_user_profile(db, current_user, user_update)
+        logger.info(f"Profil mis à jour pour {current_user.email}")
+        return updated_user
+    except Exception as e:
+        logger.exception(f"Erreur lors de la mise à jour du profil pour {current_user.email}")
+        # On renvoie une erreur 500 mais avec le détail pour le client (en dev)
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 # ============ ROUTES CALENDRIER ============
