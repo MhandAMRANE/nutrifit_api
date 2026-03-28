@@ -11,8 +11,7 @@ ecdsa==0.19.1
 email-validator==2.3.0
 fastapi==0.111.1
 fastapi-cli==0.0.16
-Flask==3.0.2
-Flask-SQLAlchemy==3.1.1
+
 greenlet==3.2.4
 gunicorn==21.2.0
 h11==0.16.0
@@ -50,4 +49,3 @@ uvicorn==0.23.1
 uvloop==0.22.1
 watchfiles==1.1.1
 websockets==15.0.1
-Werkzeug==3.1.3
