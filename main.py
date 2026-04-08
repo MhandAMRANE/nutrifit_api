@@ -18,6 +18,7 @@ from controllers import exercice_controller as ec
 from controllers import chat_controller as cc
 from controllers import calendar_controller as cal_c
 from controllers import favoris_controller as fc
+from controllers import social_controller as sc
 
 try:
     Base.metadata.create_all(bind=engine)
@@ -465,3 +466,130 @@ def get_user_favorites(
     """
     return fc.get_user_favorites(db, current_user.id_utilisateur)
 
+
+# ============ ROUTES SOCIAL (AMIS & PARTAGE) ============
+
+@app.get("/friends", response_model=List[schemas.FollowUserInfo])
+def get_my_friends(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Obtenir la liste de mes amis actuels"""
+    return sc.get_friends(db, current_user.id_utilisateur)
+
+@app.get("/friends/requests", response_model=List[schemas.FriendshipResponse])
+def get_my_friend_requests(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Obtenir les demandes d'amis en attente (reçues)"""
+    return sc.get_friend_requests(db, current_user.id_utilisateur)
+
+@app.post("/friends/request", response_model=schemas.FriendshipResponse, status_code=status.HTTP_201_CREATED)
+def send_friend_request(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Envoyer une demande d'ami"""
+    receiver_id = data.get("receiver_id")
+    if not receiver_id:
+        raise HTTPException(status_code=400, detail="receiver_id est requis")
+    return sc.send_friend_request(db, current_user.id_utilisateur, receiver_id)
+
+@app.put("/friends/request/{request_id}/accept", response_model=schemas.FriendshipResponse)
+def accept_friend_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Accepter une demande d'ami"""
+    return sc.accept_friend_request(db, request_request_id:=request_id, user_id=current_user.id_utilisateur)
+
+@app.delete("/friends/request/{request_id}/reject", status_code=status.HTTP_204_NO_CONTENT)
+def reject_friend_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Refuser une demande d'ami"""
+    sc.reject_friend_request(db, request_id, current_user.id_utilisateur)
+    return None
+
+@app.delete("/friends/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_friend(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Supprimer un ami"""
+    sc.remove_friend(db, current_user.id_utilisateur, user_id)
+    return None
+
+@app.get("/friends/search", response_model=List[schemas.UserSearchResult])
+def search_users(
+    q: str,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Recherche des utilisateurs (minimum 2 caractères)"""
+    if len(q.strip()) < 2:
+        raise HTTPException(status_code=400, detail="La recherche doit contenir au moins 2 caractères")
+    return sc.search_users(db, q.strip(), current_user.id_utilisateur)
+
+@app.get("/friends/stats/{user_id}")
+def get_user_stats(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Stats sociales d'un profil"""
+    return sc.get_stats(db, user_id, current_user.id_utilisateur)
+
+@app.post("/recipes/share", response_model=List[schemas.SharedRecipeResponse], status_code=status.HTTP_201_CREATED)
+def share_recipe(
+    data: schemas.SharedRecipeBase,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Partager une recette avec un ou plusieurs amis"""
+    return sc.share_recipe(db, current_user.id_utilisateur, data.receiver_ids, data.recipe_id)
+
+@app.get("/recipes/shared-with-me", response_model=List[schemas.SharedRecipeResponse])
+def get_shared_recipes(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Obtenir les recettes partagées par des amis"""
+    return sc.get_shared_recipes_with_me(db, current_user.id_utilisateur)
+
+@app.get("/users/{friend_id}/profile", response_model=schemas.FriendProfileResponse)
+def get_friend_profile(
+    friend_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(auth.get_current_user)
+):
+    """Le Profil Ami (Sécurisé)"""
+    from controllers import favoris_controller as fc
+    
+    is_friend = sc.get_friends(db, current_user.id_utilisateur)
+    is_friend = any(f.id_utilisateur == friend_id for f in is_friend)
+    
+    if not is_friend and current_user.id_utilisateur != friend_id:
+        raise HTTPException(status_code=403, detail="Vous n'êtes pas ami avec cet utilisateur.")
+        
+    friend_user = db.query(Utilisateur).filter(Utilisateur.id_utilisateur == friend_id).first()
+    if not friend_user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+        
+    favs = fc.get_user_favorites(db, friend_id)
+    
+    return {
+        "id_utilisateur": friend_user.id_utilisateur,
+        "nom": friend_user.nom,
+        "prenom": friend_user.prenom,
+        "path_pp": friend_user.path_pp,
+        "objectif": friend_user.objectif,
+        "recettes_favorites": favs,
+        "programmes_actifs": []
+    }
