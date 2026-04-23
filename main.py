@@ -72,10 +72,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
 
-class CreatePaymentIntentModel(BaseModel):
-    amount: int  # en centimes (ex: 500 = 5€, 1000 = 10€)
-    currency: str = "eur"
-
 @app.get("/")
 def home():
     return {"message": "Bienvenue sur l'API NutriFit "}
@@ -599,26 +595,31 @@ def get_friend_profile(
         "programmes_actifs": []
     }
 
+class DonationRequest(BaseModel):
+    amount: int        # en centimes (500 = 5€, 1000 = 10€, 2000 = 20€, 5000 = 50€)
+    card_number: str   # numéro de carte de test Stripe (ex: "4242424242424242")
+    currency: str = "eur"
 
-@app.post("/payment/create-intent")
-def create_payment_intent(
-    data: CreatePaymentIntentModel,
+
+@app.post("/payment/donate")
+def donate(
+    data: DonationRequest,
     current_user: Utilisateur = Depends(auth.get_current_user),
 ):
     """
-    [SANDBOX] Crée un PaymentIntent Stripe pour une donation simulée.
-    Retourne le client_secret nécessaire pour confirmer le paiement côté frontend.
-    Cartes de test : 4242 4242 4242 4242 (succès), 4000 0000 0000 9995 (échec).
-    """
-    return pc.create_payment_intent(data.amount, data.currency)
+    [SANDBOX] Simule une donation via Stripe.
 
+    Le numéro de carte doit être une carte de test Stripe officielle.
+    La création ET la confirmation du PaymentIntent se font server-side.
+    Seules les cartes test Stripe fonctionnent — tout autre numéro est refusé.
 
-@app.get("/payment/status/{payment_intent_id}")
-def get_payment_status(
-    payment_intent_id: str,
-    current_user: Utilisateur = Depends(auth.get_current_user),
-):
+    Cartes de test :
+      4242 4242 4242 4242  → Succès
+      4000 0000 0000 9995  → Refusé (fonds insuffisants)
+      4000 0000 0000 0002  → Refusé (générique)
     """
-    [SANDBOX] Vérifie le statut d'un PaymentIntent Stripe.
-    """
-    return pc.confirm_payment_intent(payment_intent_id)
+    return pc.create_and_confirm_donation(
+        amount_cents=data.amount,
+        card_number=data.card_number,
+        currency=data.currency,
+    )
