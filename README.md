@@ -92,4 +92,4 @@ python test_db_connection.py
 
 ---
 
-**Contact** : [Votre nom/email]
+**Contact** : mhandamrane25@gmail.com
