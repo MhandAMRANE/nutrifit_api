@@ -4,6 +4,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.mysql import TINYINT
 from datetime import datetime
 from database import Base
+from sqlalchemy import JSON
 
 class Utilisateur(Base):
     __tablename__ = "Utilisateur"
@@ -25,6 +26,7 @@ class Utilisateur(Base):
     equipements = Column(String(255), nullable=True)
     nb_jours_entrainement = Column(TINYINT(unsigned=True), nullable=True)
     path_pp = Column(String(255), nullable=True)
+    privacy_settings = Column(JSON, nullable=True)
 
 class Recette(Base):
     __tablename__ = "Recette"
@@ -104,3 +106,26 @@ class Favoris(Base):
     __tablename__ = "Favoris"
     id_utilisateur = Column(Integer, ForeignKey('Utilisateur.id_utilisateur'), primary_key=True)
     id_recette = Column(Integer, ForeignKey('Recette.id_recette'), primary_key=True)
+
+class Follow(Base):
+    __tablename__ = "Follow"
+    id_follower = Column(Integer, ForeignKey('Utilisateur.id_utilisateur', ondelete='CASCADE'), primary_key=True)
+    id_followed = Column(Integer, ForeignKey('Utilisateur.id_utilisateur', ondelete='CASCADE'), primary_key=True)
+    created_at  = Column(DateTime, default=datetime.utcnow)
+
+class Friendship(Base):
+    __tablename__ = "Friendships"
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey('Utilisateur.id_utilisateur', ondelete='CASCADE'), nullable=False)
+    receiver_id = Column(Integer, ForeignKey('Utilisateur.id_utilisateur', ondelete='CASCADE'), nullable=False)
+    status = Column(Enum('pending', 'accepted', 'rejected', name='friendship_status_enum'), default='pending', nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class SharedRecipe(Base):
+    __tablename__ = "Shared_Recipes"
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey('Utilisateur.id_utilisateur', ondelete='CASCADE'), nullable=False)
+    receiver_id = Column(Integer, ForeignKey('Utilisateur.id_utilisateur', ondelete='CASCADE'), nullable=False)
+    recipe_id = Column(Integer, ForeignKey('Recette.id_recette', ondelete='CASCADE'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

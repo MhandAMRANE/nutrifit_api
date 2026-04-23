@@ -27,7 +27,7 @@ class UserBase(BaseModel):
 class UserResponse(UserBase):
     id_utilisateur: int
     type_utilisateur: str
-
+    privacy_settings: Optional[dict] = None
 
 class UserUpdate(BaseModel):
     nom: Optional[str] = None
@@ -42,6 +42,7 @@ class UserUpdate(BaseModel):
     equipements: Optional[str] = None
     nb_jours_entrainement: Optional[int] = None
     path_pp: Optional[str] = None
+    privacy_settings: Optional[dict] = None
 
     @field_validator('age')
     @classmethod
@@ -183,5 +184,74 @@ class FavoriteCreate(FavoriteBase):
 
 class FavoriteResponse(FavoriteBase):
     id_utilisateur: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Schémas pour le système Social (Follow) ---
+
+class FollowUserInfo(BaseModel):
+    """Infos minimales d'un utilisateur exposées dans les listes sociales."""
+    id_utilisateur: int
+    nom: str
+    prenom: Optional[str] = None
+    path_pp: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class UserSearchResult(FollowUserInfo):
+    """Résultat de recherche : inclut si l'utilisateur courant le suit déjà."""
+    is_followed: bool = False
+
+class FollowStatsResponse(BaseModel):
+    id_utilisateur: int
+    followers_count: int
+    following_count: int
+    is_following: bool        # est-ce que MOI je suis cet utilisateur
+    is_following_back: bool   # est-ce que lui ME suit (follow-back mutuel)
+
+# --- Schémas pour Friendships ---
+
+class FriendshipBase(BaseModel):
+    requester_id: int
+    receiver_id: int
+    status: str
+
+class FriendshipResponse(FriendshipBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    # Infos sur l'ami (sender ou receiver en fonction de qui demande)
+    ami: Optional[FollowUserInfo] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SharedRecipeBase(BaseModel):
+    recipe_id: int
+    receiver_ids: List[int]
+
+class SharedRecipeResponse(BaseModel):
+    id: int
+    sender_id: int
+    receiver_id: int
+    recipe_id: int
+    created_at: datetime
+    
+    recette: Optional[Recette] = None
+    sender: Optional[FollowUserInfo] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class FriendProfileResponse(BaseModel):
+    id_utilisateur: int
+    nom: str
+    prenom: Optional[str] = None
+    path_pp: Optional[str] = None
+    objectif: Optional[str] = None
+    # Favoris et programmes (optionnel)
+    recettes_favorites: List[Recette] = []
+    programmes_actifs: List[dict] = [] # on pourrait mettre PlanningSeance, etc.
 
     model_config = ConfigDict(from_attributes=True)
